@@ -30,6 +30,22 @@ const searchInput = document.getElementById('task-search');
 const searchClearButton = document.getElementById('search-clear');
 const sortSelect = document.getElementById('task-sort');
 
+// Backup and Restore elements
+const backupToggle = document.getElementById('backup-toggle');
+const backupModal = document.getElementById('backup-modal');
+const backupModalClose = document.getElementById('backup-modal-close');
+const exportCountBadge = document.getElementById('export-count-badge');
+const exportJsonBtn = document.getElementById('export-json-btn');
+const exportCsvBtn = document.getElementById('export-csv-btn');
+const importFileInput = document.getElementById('import-file-input');
+const fileDropArea = document.getElementById('file-drop-area');
+const dropTextMain = document.getElementById('drop-text-main');
+const dropTextSub = document.getElementById('drop-text-sub');
+const confirmImportBtn = document.getElementById('confirm-import-btn');
+const backupStatus = document.getElementById('backup-status');
+
+let stagedImportTasks = null;
+
 // Application State
 let tasks = loadTasks();
 let priorityChart = null;
@@ -378,6 +394,7 @@ function showTasks(filter = historyMode ? currentFilter : 'active') {
     }
 
     updateDashboardStats();
+    updateBackupCountBadge();
 }
 
 /**
@@ -583,6 +600,507 @@ window.setInterval(refreshTasksAfterDateChange, 60 * 1000);
 document.addEventListener('visibilitychange', function() {
     if (!document.hidden) refreshTasksAfterDateChange();
 });
+
+/* ==========================================================================
+   Task Backup, Export, and Import Engine
+   ========================================================================== */
+
+/**
+ * Initiates a browser download for given content and MIME type.
+ */
+function downloadFile(content, fileName, mimeType) {
+    const blob = new Blob([content], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+}
+
+/**
+ * Escapes a cell value for standard RFC 4180 CSV compliance.
+ */
+function escapeCSVCell(value) {
+    if (value === null || value === undefined) return '""';
+    const stringValue = String(value);
+    if (stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n') || stringValue.includes('\r')) {
+        return `"${stringValue.replace(/"/g, '""')}"`;
+    }
+    return `"${stringValue}"`;
+}
+
+/**
+ * Exports tasks to a formatted JSON string.
+ */
+function exportTasksToJSON(taskList) {
+    return JSON.stringify(taskList, null, 2);
+}
+
+/**
+ * Exports tasks to a standard CSV string.
+ */
+function exportTasksToCSV(taskList) {
+    const headers = ['text', 'dueDate', 'priority', 'completed', 'completedAt'];
+    const rows = taskList.map(task => [
+        escapeCSVCell(task.text),
+        escapeCSVCell(task.dueDate || ''),
+        escapeCSVCell(task.priority || 'medium'),
+        task.completed ? 'true' : 'false',
+        escapeCSVCell(task.completedAt || '')
+    ].join(','));
+    return [headers.join(','), ...rows].join('\r\n');
+}
+
+/**
+ * Robust CSV parser handling quotes, double quotes (""), commas, and newlines.
+ */
+function parseCSV(content) {
+    const rows = [];
+    let currentRow = [];
+    let currentField = '';
+    let inQuotes = false;
+
+    for (let i = 0; i < content.length; i++) {
+        const char = content[i];
+        const nextChar = content[i + 1];
+
+        if (char === '"') {
+            if (inQuotes && nextChar === '"') {
+                currentField += '"';
+                i++;
+            } else {
+                inQuotes = !inQuotes;
+            }
+        } else if (char === ',' && !inQuotes) {
+            currentRow.push(currentField);
+            currentField = '';
+        } else if ((char === '\r' || char === '\n') && !inQuotes) {
+            if (char === '\r' && nextChar === '\n') {
+                i++;
+            }
+            currentRow.push(currentField);
+            currentField = '';
+            if (currentRow.length > 1 || (currentRow.length === 1 && currentRow[0].trim() !== '')) {
+                rows.push(currentRow);
+            }
+            currentRow = [];
+        } else {
+            currentField += char;
+        }
+    }
+
+    if (currentField !== '' || currentRow.length > 0) {
+        currentRow.push(currentField);
+        if (currentRow.length > 1 || (currentRow.length === 1 && currentRow[0].trim() !== '')) {
+            rows.push(currentRow);
+        }
+    }
+
+    return rows;
+}
+
+/**
+ * Validates a single task object according to task specifications.
+ */
+function validateTaskRecord(task, index) {
+    const rowNum = index + 1;
+    if (!task || typeof task !== 'object' || Array.isArray(task)) {
+        return { valid: false, error: `Task #${rowNum} is not a valid object.` };
+    }
+    if (typeof task.text !== 'string' || task.text.trim() === '') {
+        return { valid: false, error: `Task #${rowNum} is missing a required non-empty 'text' field.` };
+    }
+    if (task.dueDate !== undefined && task.dueDate !== null && typeof task.dueDate !== 'string') {
+        return { valid: false, error: `Task #${rowNum} has an invalid 'dueDate' (must be a string).` };
+    }
+    const priority = String(task.priority || '').trim().toLowerCase();
+    if (!['low', 'medium', 'high'].includes(priority)) {
+        return { valid: false, error: `Task #${rowNum} has invalid priority "${task.priority}". Must be 'low', 'medium', or 'high'.` };
+    }
+    if (typeof task.completed !== 'boolean') {
+        return { valid: false, error: `Task #${rowNum} has an invalid 'completed' status (must be true or false).` };
+    }
+    if (task.completedAt !== null && task.completedAt !== undefined && task.completedAt !== '') {
+        if (typeof task.completedAt !== 'string' || Number.isNaN(Date.parse(task.completedAt))) {
+            return { valid: false, error: `Task #${rowNum} has an invalid 'completedAt' timestamp.` };
+        }
+    }
+    return { valid: true };
+}
+
+/**
+ * Parses and validates CSV backup content into clean task objects.
+ */
+function parseAndValidateCSV(csvContent) {
+    if (typeof csvContent !== 'string' || csvContent.trim() === '') {
+        return { success: false, error: 'The CSV file is empty.' };
+    }
+
+    const rows = parseCSV(csvContent);
+    if (rows.length < 2) {
+        return { success: false, error: 'CSV file contains no task records (only header or empty).' };
+    }
+
+    const headers = rows[0].map(h => h.trim().toLowerCase());
+    const headerMap = {};
+    headers.forEach((h, idx) => {
+        headerMap[h] = idx;
+    });
+
+    if (headerMap['text'] === undefined) {
+        return { success: false, error: "CSV header is missing the required 'text' column." };
+    }
+
+    const validatedTasks = [];
+    for (let i = 1; i < rows.length; i++) {
+        const row = rows[i];
+        if (row.length === 1 && row[0].trim() === '') continue;
+
+        const textRaw = row[headerMap['text']] || '';
+        const dueDateRaw = headerMap['duedate'] !== undefined ? (row[headerMap['duedate']] || '') : '';
+        const priorityRaw = headerMap['priority'] !== undefined ? (row[headerMap['priority']] || 'medium') : 'medium';
+        const completedRaw = headerMap['completed'] !== undefined ? (row[headerMap['completed']] || 'false') : 'false';
+        const completedAtRaw = headerMap['completedat'] !== undefined ? (row[headerMap['completedat']] || '') : '';
+
+        const priorityLower = String(priorityRaw).trim().toLowerCase();
+        const completedLower = String(completedRaw).trim().toLowerCase();
+        let isCompleted = false;
+        if (completedLower === 'true' || completedLower === '1' || completedLower === 'yes') {
+            isCompleted = true;
+        } else if (completedLower === 'false' || completedLower === '0' || completedLower === 'no' || completedLower === '') {
+            isCompleted = false;
+        } else {
+            return { success: false, error: `Task #${i} has an invalid 'completed' status ("${completedRaw}"). Must be true or false.` };
+        }
+
+        let completedAt = null;
+        if (completedAtRaw && completedAtRaw.trim() !== '' && completedAtRaw.trim().toLowerCase() !== 'null') {
+            completedAt = completedAtRaw.trim();
+        }
+
+        const candidate = {
+            text: textRaw.trim(),
+            dueDate: dueDateRaw.trim(),
+            priority: priorityLower || 'medium',
+            completed: isCompleted,
+            completedAt: completedAt
+        };
+
+        const val = validateTaskRecord(candidate, i - 1);
+        if (!val.valid) {
+            return { success: false, error: val.error };
+        }
+
+        validatedTasks.push(candidate);
+    }
+
+    if (validatedTasks.length === 0) {
+        return { success: false, error: 'No valid task records found in CSV file.' };
+    }
+
+    return { success: true, tasks: validatedTasks };
+}
+
+/**
+ * Parses and validates JSON backup content into clean task objects.
+ */
+function parseAndValidateJSON(jsonString) {
+    if (typeof jsonString !== 'string' || jsonString.trim() === '') {
+        return { success: false, error: 'The JSON file is empty.' };
+    }
+
+    let parsed;
+    try {
+        parsed = JSON.parse(jsonString);
+    } catch (err) {
+        return { success: false, error: `Invalid JSON syntax: ${err.message}` };
+    }
+
+    let candidateList = parsed;
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed) && Array.isArray(parsed.tasks)) {
+        candidateList = parsed.tasks;
+    }
+
+    if (!Array.isArray(candidateList)) {
+        return { success: false, error: 'Imported JSON must contain a top-level array of tasks.' };
+    }
+
+    if (candidateList.length === 0) {
+        return { success: false, error: 'The imported JSON file contains no tasks.' };
+    }
+
+    const validatedTasks = [];
+    for (let i = 0; i < candidateList.length; i++) {
+        const item = candidateList[i];
+        const val = validateTaskRecord(item, i);
+        if (!val.valid) {
+            return { success: false, error: val.error };
+        }
+
+        let completedAt = null;
+        if (item.completedAt && typeof item.completedAt === 'string') {
+            completedAt = item.completedAt;
+        }
+
+        validatedTasks.push({
+            text: item.text.trim(),
+            dueDate: typeof item.dueDate === 'string' ? item.dueDate.trim() : '',
+            priority: String(item.priority || 'medium').trim().toLowerCase(),
+            completed: Boolean(item.completed),
+            completedAt: completedAt
+        });
+    }
+
+    return { success: true, tasks: validatedTasks };
+}
+
+/**
+ * Merges imported tasks with existing tasks, avoiding duplicate entries.
+ */
+function mergeTasks(existingList, importedList) {
+    const merged = [...existingList];
+    let addedCount = 0;
+    let skippedCount = 0;
+
+    importedList.forEach(newTask => {
+        const isDuplicate = merged.some(existing => (
+            existing.text.trim().toLowerCase() === newTask.text.trim().toLowerCase() &&
+            (existing.dueDate || '') === (newTask.dueDate || '') &&
+            existing.priority === newTask.priority &&
+            existing.completed === newTask.completed
+        ));
+
+        if (isDuplicate) {
+            skippedCount++;
+        } else {
+            merged.push(newTask);
+            addedCount++;
+        }
+    });
+
+    return { merged, addedCount, skippedCount };
+}
+
+/**
+ * Shows user-facing feedback banner inside the Backup modal.
+ */
+function showBackupStatus(message, type = 'info') {
+    if (!backupStatus) return;
+    backupStatus.textContent = message;
+    backupStatus.className = `backup-status status-${type}`;
+    backupStatus.hidden = false;
+}
+
+/**
+ * Resets the import file selection and staging state.
+ */
+function resetImportStaging() {
+    stagedImportTasks = null;
+    if (importFileInput) importFileInput.value = '';
+    if (confirmImportBtn) confirmImportBtn.disabled = true;
+    if (dropTextMain) dropTextMain.textContent = 'Click or drop a JSON or CSV file here';
+    if (dropTextSub) dropTextSub.textContent = 'Supports .json or .csv backup files';
+}
+
+/**
+ * Updates the task count badge in the backup modal.
+ */
+function updateBackupCountBadge() {
+    if (exportCountBadge) {
+        exportCountBadge.textContent = `${tasks.length} task${tasks.length === 1 ? '' : 's'}`;
+    }
+}
+
+/**
+ * Processes a chosen backup file (JSON or CSV).
+ */
+function handleBackupFile(file) {
+    if (!file) return;
+
+    const fileName = file.name.toLowerCase();
+    const isJSON = fileName.endsWith('.json') || file.type === 'application/json';
+    const isCSV = fileName.endsWith('.csv') || file.type === 'text/csv';
+
+    if (!isJSON && !isCSV) {
+        showBackupStatus(`Unsupported file format "${file.name}". Please upload a .json or .csv file.`, 'error');
+        resetImportStaging();
+        return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const content = e.target.result;
+        const result = isJSON ? parseAndValidateJSON(content) : parseAndValidateCSV(content);
+
+        if (!result.success) {
+            stagedImportTasks = null;
+            if (confirmImportBtn) confirmImportBtn.disabled = true;
+            if (dropTextMain) dropTextMain.textContent = file.name;
+            if (dropTextSub) dropTextSub.textContent = '⚠️ Invalid file structure';
+            showBackupStatus(`Import validation failed: ${result.error} (Your current tasks were not changed).`, 'error');
+            return;
+        }
+
+        stagedImportTasks = result.tasks;
+        if (confirmImportBtn) confirmImportBtn.disabled = false;
+        if (dropTextMain) dropTextMain.textContent = file.name;
+        if (dropTextSub) dropTextSub.textContent = `✓ Ready: ${stagedImportTasks.length} valid task(s) found`;
+        showBackupStatus(`Validated ${stagedImportTasks.length} task(s) from "${file.name}". Click "Import Tasks" to complete.`, 'success');
+    };
+
+    reader.onerror = function() {
+        showBackupStatus(`Failed to read file "${file.name}".`, 'error');
+        resetImportStaging();
+    };
+
+    reader.readAsText(file);
+}
+
+/**
+ * Opens the backup and restore modal dialog.
+ */
+function openBackupModal() {
+    if (!backupModal) return;
+    updateBackupCountBadge();
+    resetImportStaging();
+    if (backupStatus) backupStatus.hidden = true;
+    if (backupToggle) backupToggle.setAttribute('aria-expanded', 'true');
+
+    if (typeof backupModal.showModal === 'function') {
+        backupModal.showModal();
+    } else {
+        backupModal.setAttribute('open', '');
+    }
+}
+
+/**
+ * Closes the backup and restore modal dialog.
+ */
+function closeBackupModal() {
+    if (!backupModal) return;
+    if (backupToggle) {
+        backupToggle.setAttribute('aria-expanded', 'false');
+        backupToggle.focus();
+    }
+
+    if (typeof backupModal.close === 'function') {
+        backupModal.close();
+    } else {
+        backupModal.removeAttribute('open');
+    }
+}
+
+// Backup & Restore Event Listeners
+if (backupToggle) {
+    backupToggle.addEventListener('click', openBackupModal);
+}
+
+if (backupModalClose) {
+    backupModalClose.addEventListener('click', closeBackupModal);
+}
+
+if (backupModal) {
+    // Close on backdrop click
+    backupModal.addEventListener('click', function(event) {
+        const rect = backupModal.getBoundingClientRect();
+        const isInDialog = (
+            rect.top <= event.clientY && event.clientY <= rect.top + rect.height &&
+            rect.left <= event.clientX && event.clientX <= rect.left + rect.width
+        );
+        if (!isInDialog) {
+            closeBackupModal();
+        }
+    });
+
+    backupModal.addEventListener('cancel', function() {
+        if (backupToggle) backupToggle.setAttribute('aria-expanded', 'false');
+    });
+}
+
+if (exportJsonBtn) {
+    exportJsonBtn.addEventListener('click', function() {
+        const jsonContent = exportTasksToJSON(tasks);
+        const fileName = `tasks-backup-${getTodayDate()}.json`;
+        downloadFile(jsonContent, fileName, 'application/json');
+        showBackupStatus(`Successfully exported ${tasks.length} task(s) to ${fileName}.`, 'success');
+    });
+}
+
+if (exportCsvBtn) {
+    exportCsvBtn.addEventListener('click', function() {
+        const csvContent = exportTasksToCSV(tasks);
+        const fileName = `tasks-backup-${getTodayDate()}.csv`;
+        downloadFile(csvContent, fileName, 'text/csv;charset=utf-8;');
+        showBackupStatus(`Successfully exported ${tasks.length} task(s) to ${fileName}.`, 'success');
+    });
+}
+
+if (fileDropArea && importFileInput) {
+    fileDropArea.addEventListener('click', function() {
+        importFileInput.click();
+    });
+
+    fileDropArea.addEventListener('keydown', function(event) {
+        if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            importFileInput.click();
+        }
+    });
+
+    fileDropArea.addEventListener('dragover', function(event) {
+        event.preventDefault();
+        fileDropArea.classList.add('drag-over');
+    });
+
+    fileDropArea.addEventListener('dragleave', function() {
+        fileDropArea.classList.remove('drag-over');
+    });
+
+    fileDropArea.addEventListener('drop', function(event) {
+        event.preventDefault();
+        fileDropArea.classList.remove('drag-over');
+        if (event.dataTransfer && event.dataTransfer.files && event.dataTransfer.files[0]) {
+            handleBackupFile(event.dataTransfer.files[0]);
+        }
+    });
+
+    importFileInput.addEventListener('change', function() {
+        if (importFileInput.files && importFileInput.files[0]) {
+            handleBackupFile(importFileInput.files[0]);
+        }
+    });
+}
+
+if (confirmImportBtn) {
+    confirmImportBtn.addEventListener('click', function() {
+        if (!stagedImportTasks || !Array.isArray(stagedImportTasks)) return;
+
+        const modeInput = document.querySelector('input[name="import-mode"]:checked');
+        const mode = modeInput ? modeInput.value : 'merge';
+
+        if (mode === 'replace') {
+            const previousCount = tasks.length;
+            tasks = stagedImportTasks;
+            saveTasks();
+            showTasks(historyMode ? currentFilter : 'active');
+            updateBackupCountBadge();
+            showBackupStatus(`Successfully replaced ${previousCount} existing task(s) with ${stagedImportTasks.length} imported task(s).`, 'success');
+        } else {
+            const { merged, addedCount, skippedCount } = mergeTasks(tasks, stagedImportTasks);
+            tasks = merged;
+            saveTasks();
+            showTasks(historyMode ? currentFilter : 'active');
+            updateBackupCountBadge();
+            const skipNotice = skippedCount > 0 ? ` (${skippedCount} duplicate task${skippedCount === 1 ? '' : 's'} skipped)` : '';
+            showBackupStatus(`Successfully merged ${addedCount} task(s)${skipNotice}. Total tasks: ${tasks.length}.`, 'success');
+        }
+
+        resetImportStaging();
+    });
+}
 
 // Initial render
 showTasks();
