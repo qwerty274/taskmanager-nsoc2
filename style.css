@@ -197,11 +197,21 @@ h1 {
   letter-spacing: -0.008em;
 }
 
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.header-btn,
 .theme-btn,
-#theme-toggle {
+#theme-toggle,
+#backup-toggle {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 6px;
   height: 32px;
   padding: 0 14px;
   border: 1px solid var(--border);
@@ -211,10 +221,13 @@ h1 {
   font-size: 12px;
   font-weight: 550;
   letter-spacing: -0.008em;
+  transition: background-color 150ms ease, color 150ms ease, border-color 150ms ease;
 }
 
+.header-btn:hover,
 .theme-btn:hover,
-#theme-toggle:hover {
+#theme-toggle:hover,
+#backup-toggle:hover {
   background-color: var(--active);
   color: var(--text);
   border-color: var(--border-focus);
@@ -844,6 +857,320 @@ h1 {
 }
 
 /* ==========================================================================
+   Backup & Restore Modal Dialog
+   ========================================================================== */
+
+dialog.backup-modal {
+  position: fixed;
+  inset: 0;
+  margin: auto;
+  max-width: 520px;
+  width: calc(100% - 32px);
+  max-height: 90vh;
+  overflow-y: auto;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  background-color: var(--surface);
+  color: var(--text);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.45);
+}
+
+dialog.backup-modal::backdrop {
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+body.light-mode dialog.backup-modal {
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.16);
+}
+
+body.light-mode dialog.backup-modal::backdrop {
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.modal-wrapper {
+  display: flex;
+  flex-direction: column;
+}
+
+.modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 20px 22px 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.modal-title-group h2 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  color: var(--text);
+}
+
+.modal-subtitle {
+  margin: 3px 0 0;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+.modal-close-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 50%;
+  background-color: transparent;
+  color: var(--muted);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background-color 150ms ease, color 150ms ease;
+}
+
+.modal-close-btn:hover {
+  background-color: var(--active);
+  color: var(--text);
+}
+
+.modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 20px 22px 24px;
+}
+
+.backup-card {
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  background-color: var(--raised);
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.section-header h3 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.badge-count {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  background-color: var(--pill-active-bg);
+  color: var(--pill-active-ink);
+  font-size: 11px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.section-desc {
+  margin: 0 0 14px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.modal-actions-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.modal-actions-row .modal-btn {
+  flex: 1;
+}
+
+.modal-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background-color: var(--surface);
+  color: var(--text);
+  font-size: 12.5px;
+  font-weight: 550;
+  cursor: pointer;
+  transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease;
+}
+
+.modal-btn:hover:not(:disabled) {
+  background-color: var(--active);
+  border-color: var(--border-focus);
+}
+
+.modal-btn-primary {
+  width: 100%;
+  background-color: var(--primary);
+  border-color: var(--primary);
+  color: var(--primary-ink);
+}
+
+.modal-btn-primary:hover:not(:disabled) {
+  background-color: var(--primary-hover);
+  border-color: var(--primary-hover);
+}
+
+.modal-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* Import Mode Radio Styles */
+.import-mode-group {
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  background-color: var(--surface);
+}
+
+.import-mode-title {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.radio-options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.radio-label {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.radio-label input[type="radio"] {
+  margin-top: 2px;
+  accent-color: var(--accent);
+}
+
+.radio-text small {
+  color: var(--muted);
+  font-weight: 400;
+}
+
+/* File Drop Zone */
+.visually-hidden {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
+.file-drop-area {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  margin-bottom: 12px;
+  border: 1.5px dashed var(--border);
+  border-radius: 8px;
+  background-color: var(--surface);
+  cursor: pointer;
+  transition: border-color 150ms ease, background-color 150ms ease;
+}
+
+.file-drop-area:hover,
+.file-drop-area.drag-over,
+.file-drop-area:focus-visible {
+  border-color: var(--border-focus);
+  background-color: var(--active);
+}
+
+.drop-icon {
+  font-size: 22px;
+  opacity: 0.8;
+  flex-shrink: 0;
+}
+
+.drop-text-group {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.drop-text-main {
+  font-size: 12.5px;
+  font-weight: 550;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.drop-text-sub {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+/* Feedback Status Banner */
+.backup-status {
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.45;
+}
+
+.backup-status[hidden] {
+  display: none !important;
+}
+
+.backup-status.status-success {
+  background-color: rgba(48, 209, 88, 0.14);
+  color: var(--positive);
+  border: 1px solid rgba(48, 209, 88, 0.25);
+}
+
+.backup-status.status-error {
+  background-color: var(--pill-danger-bg);
+  color: var(--danger);
+  border: 1px solid var(--pill-danger-border);
+}
+
+.backup-status.status-info {
+  background-color: var(--pill-active-bg);
+  color: var(--pill-active-ink);
+  border: 1px solid rgba(10, 132, 255, 0.25);
+}
+
+/* ==========================================================================
    Responsive Breakpoints
    ========================================================================== */
 
@@ -856,6 +1183,16 @@ h1 {
   body > div {
     padding: 18px 14px;
     border-radius: 12px;
+  }
+
+  .app-header {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .header-actions {
+    width: 100%;
+    justify-content: flex-start;
   }
 
   #todo-form {
@@ -899,6 +1236,14 @@ h1 {
 
   #charts {
     grid-template-columns: 1fr;
+  }
+
+  .modal-actions-row {
+    flex-direction: column;
+  }
+
+  .modal-actions-row .modal-btn {
+    width: 100%;
   }
 }
 

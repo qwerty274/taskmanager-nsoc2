@@ -19,7 +19,12 @@
                     <p class="app-subtitle">Productivity Dashboard</p>
                 </div>
             </div>
-            <button id="theme-toggle" class="theme-btn" type="button" aria-label="Switch to light mode" aria-pressed="false">Light mode</button>
+            <div class="header-actions">
+                <button id="backup-toggle" class="header-btn" type="button" aria-haspopup="dialog" aria-expanded="false" aria-label="Backup and restore tasks">
+                    <span aria-hidden="true">&#8646;</span> Backup &amp; Restore
+                </button>
+                <button id="theme-toggle" class="theme-btn" type="button" aria-label="Switch to light mode" aria-pressed="false">Light mode</button>
+            </div>
         </header>
 
         <form id="todo-form" aria-label="Add new task">
@@ -114,6 +119,80 @@
                 <canvas id="weekly-chart"></canvas>
             </div>
         </section>
+
+        <!-- Backup & Restore Modal Dialog -->
+        <dialog id="backup-modal" class="backup-modal" aria-labelledby="backup-modal-title">
+            <div class="modal-wrapper">
+                <div class="modal-header">
+                    <div class="modal-title-group">
+                        <h2 id="backup-modal-title">Backup &amp; Restore Tasks</h2>
+                        <p class="modal-subtitle">Export your tasks for safekeeping or restore from a backup file.</p>
+                    </div>
+                    <button id="backup-modal-close" class="modal-close-btn" type="button" aria-label="Close dialog">&times;</button>
+                </div>
+
+                <div class="modal-body">
+                    <!-- Export Section -->
+                    <section class="backup-card" aria-labelledby="export-heading">
+                        <div class="section-header">
+                            <h3 id="export-heading">Export Tasks</h3>
+                            <span class="badge-count" id="export-count-badge">0 tasks</span>
+                        </div>
+                        <p class="section-desc">Download all your tasks to a JSON or CSV file.</p>
+                        <div class="modal-actions-row">
+                            <button id="export-json-btn" class="modal-btn" type="button">
+                                <span class="btn-icon" aria-hidden="true">&#8681;</span> Export JSON
+                            </button>
+                            <button id="export-csv-btn" class="modal-btn" type="button">
+                                <span class="btn-icon" aria-hidden="true">&#8681;</span> Export CSV
+                            </button>
+                        </div>
+                    </section>
+
+                    <!-- Import Section -->
+                    <section class="backup-card" aria-labelledby="import-heading">
+                        <div class="section-header">
+                            <h3 id="import-heading">Import Tasks</h3>
+                        </div>
+                        <p class="section-desc">Restore tasks from a JSON or CSV backup file.</p>
+
+                        <!-- Import Mode Selection -->
+                        <div class="import-mode-group" role="radiogroup" aria-label="Import strategy">
+                            <span class="import-mode-title">Import Mode:</span>
+                            <div class="radio-options">
+                                <label class="radio-label">
+                                    <input type="radio" name="import-mode" value="merge" checked>
+                                    <span class="radio-text"><strong>Merge</strong> (keep current tasks, skip exact duplicates)</span>
+                                </label>
+                                <label class="radio-label">
+                                    <input type="radio" name="import-mode" value="replace">
+                                    <span class="radio-text"><strong>Replace</strong> (clear existing tasks and set imported)</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Hidden File Input & Clickable Dropzone -->
+                        <input id="import-file-input" type="file" accept=".json,.csv,application/json,text/csv" class="visually-hidden" aria-label="Select backup file">
+                        <div id="file-drop-area" class="file-drop-area" tabindex="0" role="button" aria-label="Choose a JSON or CSV file to import">
+                            <span class="drop-icon" aria-hidden="true">&#128196;</span>
+                            <div class="drop-text-group">
+                                <span id="drop-text-main" class="drop-text-main">Click or drop a JSON or CSV file here</span>
+                                <span id="drop-text-sub" class="drop-text-sub">Supports .json or .csv backup files</span>
+                            </div>
+                        </div>
+
+                        <div class="modal-actions-row import-action-row">
+                            <button id="confirm-import-btn" class="modal-btn modal-btn-primary" type="button" disabled>
+                                Import Tasks
+                            </button>
+                        </div>
+                    </section>
+
+                    <!-- User-Facing Status & Feedback Banner -->
+                    <div id="backup-status" class="backup-status" role="status" aria-live="polite" hidden></div>
+                </div>
+            </div>
+        </dialog>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>

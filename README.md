@@ -111,6 +111,16 @@ Whether tracking daily sprint objectives, prioritizing critical deadlines, revie
       <p>Sort tasks dynamically by due date (earliest or latest), priority level (high to low or low to high), or alphabetically.</p>
     </td>
   </tr>
+  <tr>
+    <td width="50%">
+      <h3>📦 Task Export &amp; Backup</h3>
+      <p>Download your complete task list anytime in <code>JSON</code> or RFC 4180-compliant <code>CSV</code> format for easy data portability and offline backups.</p>
+    </td>
+    <td width="50%">
+      <h3>📥 Task Import &amp; Restore</h3>
+      <p>Safely restore tasks from JSON or CSV files with strict schema validation, drag-and-drop file picker, and flexible <code>Merge</code> (deduplicated) or <code>Replace</code> modes.</p>
+    </td>
+  </tr>
 </table>
 
 ---
@@ -241,6 +251,19 @@ Use browser developer tools to run each command, then reload the page:
 4. **Sorting Verification:** Select each sort option (`Due Date`, `Priority`, `Title A-Z/Z-A`) and confirm that items re-order instantly without altering task state or persistence.
 5. **Combined Filter & Sort:** Apply a filter (e.g., `Done` or `Active`) or switch to History mode and confirm that search and sort accurately scope to that view.
 
+### 📦 Backup, Export & Import Regression Checks
+
+1. **JSON Export:** Click **Backup & Restore** -> click **Export JSON**. Confirm that `tasks-backup-YYYY-MM-DD.json` downloads and contains a valid array of tasks.
+2. **CSV Export:** Click **Export CSV**. Confirm that `tasks-backup-YYYY-MM-DD.csv` downloads with proper headers and escaping for commas, quotes, and newlines.
+3. **Valid Import (Merge Mode):** Choose a JSON or CSV backup with new tasks. With **Merge** selected, click **Import Tasks**. Confirm that new tasks are added to your existing list and exact duplicates are skipped.
+4. **Valid Import (Replace Mode):** Select **Replace** mode and import a backup file. Confirm that existing tasks are cleared and replaced by the imported tasks.
+5. **Malformed File Handling:** Attempt to import an invalid JSON or corrupted CSV file. Confirm that the app displays a clear user-facing error message and does **not** alter or corrupt existing tasks.
+6. **Partially Invalid Batch:** Attempt to import a file where one task is missing the `text` field or has an invalid priority. Confirm the entire batch is rejected with an explanatory message, leaving existing tasks intact.
+7. **Automated Unit Tests:** Run the automated test suite using Node.js built-in test runner:
+   ```bash
+   node --test test-export-import.js
+   ```
+
 ---
 
 ## 🗺️ Roadmap
@@ -249,7 +272,7 @@ Exciting features planned for future releases:
 
 - [ ] 🔄 **Drag-and-Drop Reordering**: Interactive task sequencing using HTML5 Drag and Drop API.
 - [ ] 🏷️ **Custom Tags & Categories**: Multi-label tagging with custom color badges.
-- [ ] 📥 **Data Import / Export**: One-click JSON / CSV backup and restore.
+- [x] 📥 **Data Import / Export**: One-click JSON / CSV backup and restore with strict schema validation and merge/replace strategies.
 - [ ] 📋 **Subtasks & Nested Checklists**: Granular sub-item progress tracking.
 - [x] 🔍 **Task Search & Multi-Criteria Sorting**: Live search by keyword and dynamic sorting by date, priority, or title.
 - [x] ☀️ **Dark / Light Theme Switcher**: Dynamic theme toggle with persistent preference.
