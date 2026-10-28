@@ -406,6 +406,29 @@ h1 {
   color: var(--danger);
 }
 
+/* Streak and points */
+.streak-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px 16px;
+  padding: 12px 16px 0;
+  border-top: 1px solid var(--border);
+  background-color: var(--raised);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--muted);
+}
+
+.streak-row strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.streak-row + .progress-container {
+  border-top: 0;
+}
+
 /* Completion Progress Bar */
 .progress-container {
   padding: 12px 16px 14px;

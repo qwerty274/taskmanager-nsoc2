@@ -12,6 +12,14 @@ export function getTodayDate() {
 }
 
 /**
+ * Creates a unique id for a task.
+ */
+export function createTaskId() {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID();
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+/**
  * Checks whether a stored record has the required task fields and types.
  */
 export function isValidTask(task) {

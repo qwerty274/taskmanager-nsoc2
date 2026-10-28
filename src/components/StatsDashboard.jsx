@@ -1,7 +1,7 @@
 import React from 'react';
 import { isOverdue } from '../utils/taskUtils';
 
-export default function StatsDashboard({ tasks, currentFilter, onSelectFilter }) {
+export default function StatsDashboard({ tasks, streak, points, currentFilter, onSelectFilter }) {
   const total = tasks.length;
   const active = tasks.filter(t => !t.completed).length;
   const completed = tasks.filter(t => t.completed).length;
@@ -55,6 +55,17 @@ export default function StatsDashboard({ tasks, currentFilter, onSelectFilter })
           <span className="stat-value" id="stat-overdue">{overdue}</span>
           <span className="stat-label">Overdue</span>
         </button>
+      </div>
+
+      <div className="streak-row" aria-label="Streak and points">
+        <span>
+          Streak: <strong id="streak-current">{streak ? streak.current : 0}</strong>{' '}
+          {streak && streak.current === 1 ? 'day' : 'days'}
+          {streak && streak.longest > 0 ? ` (best ${streak.longest})` : ''}
+        </span>
+        <span>
+          Points: <strong id="points-balance">{points || 0}</strong>
+        </span>
       </div>
 
       <div className="progress-container" aria-label="Task completion progress">

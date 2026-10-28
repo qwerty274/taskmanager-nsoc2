@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { getTodayDate } from '../utils/taskUtils';
+import { getTodayDate, createTaskId } from '../utils/taskUtils';
 
 export default function TaskForm({ onAddTask, historyMode, onToggleHistory }) {
   const [text, setText] = useState('');
@@ -20,6 +20,7 @@ export default function TaskForm({ onAddTask, historyMode, onToggleHistory }) {
     setError('');
 
     onAddTask({
+      id: createTaskId(),
       text: trimmed,
       dueDate: dueDate || getTodayDate(),
       priority,

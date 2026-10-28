@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { isValidTask } from '../utils/taskUtils';
+import { isValidTask, createTaskId } from '../utils/taskUtils';
 
 export function useLocalStorage(key, initialValue) {
   const [storedValue, setStoredValue] = useState(() => {
@@ -9,7 +9,10 @@ export function useLocalStorage(key, initialValue) {
       const parsed = JSON.parse(item);
       if (key === 'tasks') {
         if (!Array.isArray(parsed)) return initialValue;
-        return parsed.filter(isValidTask);
+        // Older saved tasks have no id, so give them one.
+        return parsed
+          .filter(isValidTask)
+          .map(task => (task.id ? task : { ...task, id: createTaskId() }));
       }
       return parsed;
     } catch (error) {

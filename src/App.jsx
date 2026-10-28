@@ -10,9 +10,11 @@ import BackupModal from './components/BackupModal';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import { useTheme } from './hooks/useTheme';
 import { getTodayDate } from './utils/taskUtils';
+import { loadEngineState, recordTaskCompletion, calcStreak, getBalance } from './utils/streakEngine';
 
 export default function App() {
   const [tasks, setTasks] = useLocalStorage('tasks', []);
+  const [engine, setEngine] = useState(() => loadEngineState());
   const { isLight, toggleTheme } = useTheme();
 
   const [isBackupOpen, setIsBackupOpen] = useState(false);
@@ -55,6 +57,10 @@ export default function App() {
   };
 
   const handleToggleComplete = (taskToToggle) => {
+    // Only a new completion counts. Un-completing does not take points back.
+    if (!taskToToggle.completed) {
+      setEngine(recordTaskCompletion(taskToToggle.id));
+    }
     setTasks(prev =>
       prev.map(task => {
         if (task === taskToToggle) {
@@ -106,6 +112,8 @@ export default function App() {
 
       <StatsDashboard
         tasks={tasks}
+        streak={calcStreak(engine.activityDays)}
+        points={getBalance(engine.ledger)}
         currentFilter={currentFilter}
         onSelectFilter={setCurrentFilter}
       />
