@@ -6,6 +6,7 @@ import TaskToolbar from './components/TaskToolbar';
 import FilterTabs from './components/FilterTabs';
 import TaskList from './components/TaskList';
 import ChartsOverview from './components/ChartsOverview';
+import BackupModal from './components/BackupModal';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import { useTheme } from './hooks/useTheme';
 import { getTodayDate } from './utils/taskUtils';
@@ -14,6 +15,7 @@ export default function App() {
   const [tasks, setTasks] = useLocalStorage('tasks', []);
   const { isLight, toggleTheme } = useTheme();
 
+  const [isBackupOpen, setIsBackupOpen] = useState(false);
   const [historyMode, setHistoryMode] = useState(false);
   const [currentFilter, setCurrentFilter] = useState('active');
   const [searchQuery, setSearchQuery] = useState('');
@@ -90,7 +92,11 @@ export default function App() {
 
   return (
     <div className="app-shell">
-      <Header isLight={isLight} onToggleTheme={toggleTheme} />
+      <Header
+        isLight={isLight}
+        onToggleTheme={toggleTheme}
+        onOpenBackup={() => setIsBackupOpen(true)}
+      />
 
       <TaskForm
         onAddTask={handleAddTask}
@@ -130,6 +136,13 @@ export default function App() {
       />
 
       {historyMode && <ChartsOverview tasks={tasks} isLight={isLight} />}
+
+      <BackupModal
+        isOpen={isBackupOpen}
+        onClose={() => setIsBackupOpen(false)}
+        tasks={tasks}
+        onTasksUpdate={setTasks}
+      />
     </div>
   );
 }

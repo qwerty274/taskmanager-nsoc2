@@ -1,6 +1,6 @@
 import React from 'react';
 
-export default function Header({ isLight, onToggleTheme }) {
+export default function Header({ isLight, onToggleTheme, onOpenBackup }) {
   return (
     <header className="app-header">
       <div className="brand">
@@ -10,16 +10,28 @@ export default function Header({ isLight, onToggleTheme }) {
           <p className="app-subtitle">Productivity Dashboard</p>
         </div>
       </div>
-      <button
-        id="theme-toggle"
-        className="theme-btn"
-        type="button"
-        onClick={onToggleTheme}
-        aria-label={isLight ? 'Switch to dark mode' : 'Switch to light mode'}
-        aria-pressed={isLight}
-      >
-        {isLight ? 'Dark mode' : 'Light mode'}
-      </button>
+      <div className="header-actions">
+        <button
+          id="backup-toggle"
+          className="header-btn"
+          type="button"
+          onClick={onOpenBackup}
+          aria-haspopup="dialog"
+          aria-label="Backup and restore tasks"
+        >
+          <span aria-hidden="true">&#8646;</span> Backup &amp; Restore
+        </button>
+        <button
+          id="theme-toggle"
+          className="theme-btn"
+          type="button"
+          onClick={onToggleTheme}
+          aria-label={isLight ? 'Switch to dark mode' : 'Switch to light mode'}
+          aria-pressed={isLight}
+        >
+          {isLight ? 'Dark mode' : 'Light mode'}
+        </button>
+      </div>
     </header>
   );
 }
