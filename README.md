@@ -224,6 +224,20 @@ Use browser developer tools to run each command, then reload the page:
 4. **Sorting Verification:** Select each sort option (`Due Date`, `Priority`, `Title A-Z/Z-A`) and confirm that items re-order instantly without altering task state or persistence.
 5. **Combined Filter & Sort:** Apply a filter (e.g., `Done` or `Active`) or switch to History mode and confirm that search and sort accurately scope to that view.
 
+### 📱 Install & Offline Checks
+
+The app is installable and keeps working without a network. The service worker is only built into the production bundle, so check it with a build:
+
+```bash
+npm run build
+npm run preview
+```
+
+1. **Install:** Open the preview URL in Chrome or Edge. Confirm that the install icon appears in the address bar and that the installed app opens in its own window with the checkmark icon.
+2. **Offline start:** Load the page once, then in developer tools open **Application → Service Workers** and tick **Offline** (or stop the preview server). Reload. Confirm that the app opens, existing tasks are shown, and an "You are offline" message appears.
+3. **Offline editing:** While offline, add, complete and delete a task. Go back online and reload. Confirm that the changes are still there.
+4. **Update:** With the app open, change any text in `src`, run `npm run build` again and keep `npm run preview` running. In **Application → Service Workers** click **Update** (the open tab also checks every hour). Confirm that "A new version is available." appears, that **Later** keeps the current version, and that **Reload** loads the new one and keeps your tasks.
+
 ---
 
 ## 🗺️ Roadmap
@@ -236,7 +250,7 @@ Exciting features planned for future releases:
 - [ ] 📋 **Subtasks & Nested Checklists**: Granular sub-item progress tracking.
 - [x] 🔍 **Task Search & Multi-Criteria Sorting**: Live search by keyword and dynamic sorting by date, priority, or title.
 - [x] ☀️ **Dark / Light Theme Switcher**: Dynamic theme toggle with persistent preference.
-- [ ] 📱 **Progressive Web App (PWA)**: Offline service workers and mobile app installability.
+- [x] 📱 **Progressive Web App (PWA)**: Offline service workers and mobile app installability.
 
 ---
 

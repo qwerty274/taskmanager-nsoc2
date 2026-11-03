@@ -7,6 +7,7 @@ import FilterTabs from './components/FilterTabs';
 import TaskList from './components/TaskList';
 import ChartsOverview from './components/ChartsOverview';
 import BackupModal from './components/BackupModal';
+import PwaStatus from './components/PwaStatus';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import { useTheme } from './hooks/useTheme';
 import { getTodayDate } from './utils/taskUtils';
@@ -151,6 +152,8 @@ export default function App() {
         tasks={tasks}
         onTasksUpdate={setTasks}
       />
+
+      <PwaStatus />
     </div>
   );
 }

@@ -1284,6 +1284,70 @@ body.light-mode dialog.backup-modal::backdrop {
   border: 1px solid rgba(10, 132, 255, 0.25);
 }
 
+/* Install / offline / update messages (PwaStatus) */
+.pwa-status {
+  position: fixed;
+  left: 50%;
+  bottom: max(16px, env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  z-index: 1100;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: min(92vw, 460px);
+  pointer-events: none;
+}
+
+.pwa-toast {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  background-color: var(--raised);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 550;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  pointer-events: auto;
+}
+
+.pwa-toast-offline {
+  color: var(--warning);
+}
+
+.pwa-toast-btn {
+  height: 30px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background-color: var(--surface);
+  color: var(--text);
+  font-size: 12.5px;
+  font-weight: 550;
+}
+
+.pwa-toast-btn:hover {
+  background-color: var(--active);
+  border-color: var(--border-focus);
+}
+
+.pwa-toast-btn-primary {
+  background-color: var(--primary);
+  border-color: var(--primary);
+  color: var(--primary-ink);
+}
+
+.pwa-toast-btn-primary:hover {
+  background-color: var(--primary-hover);
+  border-color: var(--primary-hover);
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;
