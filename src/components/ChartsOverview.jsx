@@ -30,7 +30,7 @@ export default function ChartsOverview({ tasks, isLight }) {
   const low = tasks.filter(t => t.priority === 'low').length;
 
   const doughnutColors = isLight
-    ? ['#ff3b30', '#ff9500', '#0071e3']
+    ? ['#b42318', '#855000', '#175cd3']
     : ['#ff453a', '#ffd60a', '#0a84ff'];
 
   const priorityData = {
@@ -46,7 +46,14 @@ export default function ChartsOverview({ tasks, isLight }) {
 
   const priorityOptions = {
     responsive: true,
-    maintainAspectRatio: true
+    maintainAspectRatio: true,
+    ...(isLight && {
+      color: '#4d5e76',
+      plugins: {
+        legend: { labels: { color: '#4d5e76' } },
+        tooltip: { backgroundColor: '#172b4d', titleColor: '#ffffff', bodyColor: '#ffffff' }
+      }
+    })
   };
 
   // Weekly Completion Calculations
@@ -79,7 +86,7 @@ export default function ChartsOverview({ tasks, isLight }) {
   const bestWeek = weeks.indexOf(bestCount) + 1;
   const hasTasks = tasks.length > 0;
 
-  const barColor = isLight ? '#0071e3' : '#0a84ff';
+  const barColor = isLight ? '#175cd3' : '#0a84ff';
 
   const weeklyData = {
     labels: ['Week 1', 'Week 2', 'Week 3', 'Week 4', 'Week 5'],
@@ -95,10 +102,18 @@ export default function ChartsOverview({ tasks, isLight }) {
 
   const weeklyOptions = {
     responsive: true,
+    ...(isLight && {
+      plugins: {
+        legend: { labels: { color: '#4d5e76' } },
+        tooltip: { backgroundColor: '#172b4d', titleColor: '#ffffff', bodyColor: '#ffffff' }
+      }
+    }),
     scales: {
+      ...(isLight && { x: { ticks: { color: '#4d5e76' }, grid: { display: false }, border: { color: '#78879d' } } }),
       y: {
         beginAtZero: true,
-        ticks: { stepSize: 1 }
+        ticks: { stepSize: 1, ...(isLight && { color: '#4d5e76' }) },
+        ...(isLight && { grid: { color: '#d5deea' }, border: { color: '#78879d' } })
       }
     }
   };

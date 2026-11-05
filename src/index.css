@@ -47,36 +47,38 @@
 }
 
 body.light-mode {
-  /* Surface & Base - Apple Light */
-  --ground: #f5f5f7;
+  /* Cool neutral surfaces; darker ink keeps small labels and statuses readable. */
+  color-scheme: light;
+  --ground: #edf2f8;
   --surface: #ffffff;
-  --raised: #f2f2f7;
-  --active: #e5e5ea;
-  --border: rgba(0, 0, 0, 0.09);
-  --border-focus: #0071e3;
-  --rule: rgba(0, 0, 0, 0.06);
-
-  --text: #1d1d1f;
-  --muted: #6e6e73;
-  --faint: #86868b;
-
-  --accent: #0071e3;
-  --accent-hover: #0077ed;
-  --primary: #0071e3;
+  --raised: #f3f6fa;
+  --active: #e2ebf8;
+  --border: #d5deea;
+  --control-border: #78879d;
+  --border-focus: #175cd3;
+  --rule: #e2e8f0;
+  --text: #172b4d;
+  --muted: #4d5e76;
+  --faint: #596579;
+  --accent: #175cd3;
+  --accent-hover: #124aaf;
+  --primary: #175cd3;
   --primary-ink: #ffffff;
-  --primary-hover: #0077ed;
-
-  --positive: #34c759;
-  --warning: #ff9500;
-  --danger: #ff3b30;
-  --danger-hover: #d70015;
-
-  --pill-danger-bg: rgba(255, 59, 48, 0.1);
-  --pill-danger-ink: #d70015;
-  --pill-danger-border: rgba(255, 59, 48, 0.2);
-
-  --pill-active-bg: rgba(0, 113, 227, 0.1);
-  --pill-active-ink: #0071e3;
+  --primary-hover: #124aaf;
+  --positive: #1b6e3c;
+  --warning: #855000;
+  --danger: #b42318;
+  --danger-hover: #912018;
+  --pill-danger-bg: #fff1ef;
+  --pill-danger-ink: #b42318;
+  --pill-danger-border: #e8b5ae;
+  --pill-active-bg: #e8f0fe;
+  --pill-active-ink: #175cd3;
+  --success-bg: #edf7f0;
+  --success-border: #a4c9af;
+  --warning-bg: #fff4dc;
+  --shadow-panel: 0 12px 32px rgba(23, 43, 77, 0.07);
+  --shadow-overlay: 0 24px 64px rgba(23, 43, 77, 0.18);
 }
 
 /* ==========================================================================
@@ -1394,4 +1396,99 @@ body.light-mode dialog.backup-modal::backdrop {
     animation-duration: 0.01ms !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+/* Light-theme refinements. Keep dark-theme geometry and palette unchanged. */
+.priority-label { display: none; }
+
+body.light-mode .app-shell {
+  box-shadow: var(--shadow-panel);
+}
+
+body.light-mode :is(#todo-form input, #todo-form select, #task-search,
+  #task-sort, .header-btn, .edit-button, .done-button, .modal-btn,
+  .file-drop-area, .month-controls button) {
+  border-color: var(--control-border);
+}
+
+body.light-mode :is(#todo-form input, #todo-form select, #task-search, #task-sort) {
+  background-color: var(--surface);
+}
+
+body.light-mode :is(input, select):focus {
+  border-color: var(--border-focus) !important;
+}
+
+body.light-mode :focus-visible {
+  outline: 3px solid var(--border-focus);
+  outline-offset: 3px;
+}
+
+body.light-mode :is(.stat-card.active-filter, #filters button.active) {
+  background-color: var(--pill-active-bg);
+  color: var(--pill-active-ink);
+}
+
+body.light-mode #filters button.active {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+body.light-mode .priority-label {
+  display: inline-block;
+  margin: 0 0 4px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--pill-active-bg);
+  color: var(--pill-active-ink);
+  font-size: 10px;
+  font-weight: 650;
+  text-transform: capitalize;
+}
+
+body.light-mode .priority-label-high {
+  background: var(--pill-danger-bg);
+  color: var(--danger);
+}
+
+body.light-mode .priority-label-medium {
+  background: var(--warning-bg);
+  color: var(--warning);
+}
+
+body.light-mode .overdue-badge { margin: 0 0 4px 6px; }
+
+body.light-mode :is(#todo-list li.is-complete .done-button, .backup-status.status-success) {
+  color: var(--positive);
+  background-color: var(--success-bg);
+  border-color: var(--success-border);
+}
+
+body.light-mode .backup-status.status-info { border-color: var(--accent); }
+
+body.light-mode :is(.modal-btn, .month-controls button):disabled {
+  opacity: 1;
+  background: var(--raised);
+  color: var(--faint);
+  border-color: var(--border);
+}
+
+body.light-mode :is(dialog.backup-modal, .undo-toast) {
+  box-shadow: var(--shadow-overlay);
+}
+
+body.light-mode dialog.backup-modal::backdrop { background: rgba(23, 43, 77, 0.3); }
+
+@media (max-width: 680px) {
+  body.light-mode .app-header { flex-wrap: wrap; }
+  body.light-mode .header-actions { flex-wrap: wrap; }
+  body.light-mode .header-btn { height: auto; min-height: 36px; }
+  body.light-mode #todo-list li:not(.empty-state):not(.month-heading) {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  body.light-mode .task-details { flex-basis: calc(100% - 32px); }
+  body.light-mode .action-buttons { flex-wrap: wrap; margin-left: 18px; }
+  body.light-mode #todo-list li .done-dot { margin-left: 18px; }
+  body.light-mode .weekly-chart-heading { flex-wrap: wrap; }
 }
