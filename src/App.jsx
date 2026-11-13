@@ -14,7 +14,7 @@ import { useUndoDelete } from './hooks/useUndoDelete';
 import { getTodayDate } from './utils/taskUtils';
 import { restoreTask } from './utils/undoDelete';
 import { loadEngineState, recordTaskCompletion, calcStreak, getBalance } from './utils/streakEngine';
-
+import PomodoroTimer from "./components/PomodoroTimer";
 export default function App() {
   const [tasks, setTasks] = useLocalStorage('tasks', []);
   const [engine, setEngine] = useState(() => loadEngineState());
@@ -135,6 +135,12 @@ export default function App() {
         currentFilter={currentFilter}
         onSelectFilter={setCurrentFilter}
       />
+      <PomodoroTimer
+  tasks={tasks.map(task => ({
+    id: task.id,
+    title: task.text
+  }))}
+/>
 
       <TaskToolbar
         searchQuery={searchQuery}
