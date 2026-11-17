@@ -39,6 +39,7 @@ export default function TaskItem({ task, onToggleComplete, onDelete, onUpdateTex
   const priorityClass = String(task.priority || 'medium').toLowerCase();
   const overdue = isOverdue(task);
   const progress = getSubtaskProgress(task);
+  const category = task.category || '';
   const panelId = `subtasks-${panelUid}`;
 
   return (
@@ -69,6 +70,12 @@ export default function TaskItem({ task, onToggleComplete, onDelete, onUpdateTex
             onDoubleClick={() => setIsEditing(true)}
           >
             {`${task.text} | Due: ${task.dueDate || 'No date'}`}
+          </span>
+        )}
+
+        {category && (
+          <span className="category-badge" title={category}>
+            #{category}
           </span>
         )}
 

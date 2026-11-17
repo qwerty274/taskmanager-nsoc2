@@ -11,6 +11,7 @@ import UndoToast from './components/UndoToast';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import { useTheme } from './hooks/useTheme';
 import { useUndoDelete } from './hooks/useUndoDelete';
+import { useCategories } from './hooks/useCategories';
 import { getTodayDate } from './utils/taskUtils';
 import { restoreTask } from './utils/undoDelete';
 import { loadEngineState, recordTaskCompletion, calcStreak, getBalance } from './utils/streakEngine';
@@ -20,10 +21,12 @@ export default function App() {
   const [engine, setEngine] = useState(() => loadEngineState());
   const { isLight, toggleTheme } = useTheme();
   const undoDelete = useUndoDelete();
+  const { categories, addCategory, removeCategory, renameCategory } = useCategories();
 
   const [isBackupOpen, setIsBackupOpen] = useState(false);
   const [historyMode, setHistoryMode] = useState(false);
   const [currentFilter, setCurrentFilter] = useState('active');
+  const [currentCategory, setCurrentCategory] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [currentSort, setCurrentSort] = useState('default');
   const [, setLastRenderDate] = useState(getTodayDate());
@@ -57,6 +60,11 @@ export default function App() {
     setTasks(prev => [...prev, newTask]);
     if (!historyMode && currentFilter !== 'all') {
       setCurrentFilter('active');
+    }
+    // If the new task has a category and we don't have a current category set,
+    // adopt the task's category as the default filter
+    if (newTask.category && !currentCategory) {
+      setCurrentCategory(newTask.category);
     }
   };
 
@@ -120,6 +128,22 @@ export default function App() {
     setSearchQuery('');
   };
 
+  const handleRemoveCategory = (categoryName) => {
+    const success = removeCategory(categoryName, tasks);
+    if (success) {
+      setCurrentCategory(''); // clear category filter if removed
+    }
+    return !success; // return whether deletion was prevented
+  };
+
+  const handleRenameCategory = (oldName, newName) => {
+    const success = renameCategory(oldName, newName);
+    if (!success) {
+      // renameCategory already handles the error case (duplicate name)
+    }
+    return success;
+  };
+
   return (
     <div className="app-shell">
       <Header
@@ -154,12 +178,16 @@ export default function App() {
         <FilterTabs
           currentFilter={currentFilter}
           onSelectFilter={setCurrentFilter}
+          currentCategory={currentCategory}
+          onSelectCategory={setCurrentCategory}
+          tasks={tasks}
         />
       )}
 
       <TaskList
         tasks={tasks}
         currentFilter={currentFilter}
+        currentCategory={currentCategory}
         searchQuery={searchQuery}
         currentSort={currentSort}
         onToggleComplete={handleToggleComplete}

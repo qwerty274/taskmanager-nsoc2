@@ -5,6 +5,7 @@ import { isOverdue, sortTasks, groupTasksByMonth } from '../utils/taskUtils';
 export default function TaskList({
   tasks,
   currentFilter,
+  currentCategory,
   searchQuery,
   currentSort,
   onToggleComplete,
@@ -22,6 +23,13 @@ export default function TaskList({
     .filter(task => {
       if (!searchQuery) return true;
       return task.text.toLowerCase().includes(searchQuery.toLowerCase());
+    })
+    .filter(task => {
+      // Category filter: if a category is selected, only show tasks in that category
+      if (currentCategory && currentCategory.trim()) {
+        return task.category && task.category.trim() === currentCategory.trim();
+      }
+      return true;
     });
 
   if (visibleTasks.length === 0) {

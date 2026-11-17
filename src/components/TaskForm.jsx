@@ -1,13 +1,16 @@
 import React, { useState, useRef } from 'react';
 import { getTodayDate, createTaskId } from '../utils/taskUtils';
+import { useCategories } from '../hooks/useCategories';
 
 export default function TaskForm({ onAddTask, historyMode, onToggleHistory }) {
   const [text, setText] = useState('');
   const [dueDate, setDueDate] = useState('');
   const [priority, setPriority] = useState('medium');
+  const [category, setCategory] = useState('');
   const [isPressed, setIsPressed] = useState(false);
   const [error, setError] = useState('');
   const inputRef = useRef(null);
+  const { categories, addCategory } = useCategories();
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -25,13 +28,15 @@ export default function TaskForm({ onAddTask, historyMode, onToggleHistory }) {
       dueDate: dueDate || getTodayDate(),
       priority,
       completed: false,
-      completedAt: null
+      completedAt: null,
+      category: category || undefined
     });
 
     setIsPressed(true);
     setTimeout(() => setIsPressed(false), 180);
 
     setText('');
+    setCategory('');
     inputRef.current?.focus();
   };
 
@@ -70,6 +75,34 @@ export default function TaskForm({ onAddTask, historyMode, onToggleHistory }) {
         <option value="medium">Medium</option>
         <option value="high">High</option>
       </select>
+      {/* Category selector */}
+      <div className="category-selector">
+        <select
+          id="todo-category"
+          aria-label="Task category"
+          value={category}
+          onChange={(e) => setCategory(e.target.value)}
+        >
+          <option value="">Category (none)</option>
+          {categories.map((cat) => (
+            <option key={cat} value={cat}>{cat}</option>
+          ))}
+        </select>
+        <button
+          type="button"
+          className="category-add-btn"
+          aria-label="Add new category"
+          onClick={() => {
+            const name = prompt('Enter new category name:');
+            if (name && addCategory(name.trim())) {
+              setCategory(name.trim());
+            }
+          }}
+        >
+          +
+        </button>
+      </div>
+
       <button
         type="submit"
         className={isPressed ? 'btn-pressed' : ''}

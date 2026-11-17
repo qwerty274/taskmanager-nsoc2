@@ -75,7 +75,10 @@ export function isValidTask(task) {
     ['low', 'medium', 'high'].includes(task.priority) &&
     typeof task.completed === 'boolean' &&
     hasValidCompletedAt &&
-    isValidSubtaskList(task.subtasks)
+    isValidSubtaskList(task.subtasks) &&
+    // Category is optional; if present it must be a non-empty string
+    (task.category === undefined ||
+      (typeof task.category === 'string' && task.category.trim() !== ''))
   );
 }
 

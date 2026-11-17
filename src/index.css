@@ -270,8 +270,39 @@ h1 {
 
 #todo-form {
   display: grid;
-  grid-template-columns: minmax(160px, 1fr) 140px 115px auto auto;
+  grid-template-columns: minmax(140px, 1fr) 130px 105px minmax(130px, auto) auto auto;
   gap: 8px;
+}
+
+.category-selector {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.category-selector select {
+  flex: 1;
+  min-width: 0;
+}
+
+.category-add-btn {
+  height: var(--control-height);
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  background-color: var(--raised);
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 150ms ease;
+}
+
+.category-add-btn:hover {
+  background-color: var(--active);
+  color: var(--text);
+  border-color: var(--border-focus);
 }
 
 #todo-form input,
@@ -768,6 +799,18 @@ h1 {
   border-radius: 4px;
   background-color: var(--pill-danger-bg);
   color: var(--pill-danger-ink);
+  font-size: 10px;
+  font-weight: 650;
+  line-height: 1.3;
+}
+
+.category-badge {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 1px 7px;
+  border-radius: 4px;
+  background-color: var(--pill-active-bg);
+  color: var(--pill-active-ink);
   font-size: 10px;
   font-weight: 650;
   line-height: 1.3;
