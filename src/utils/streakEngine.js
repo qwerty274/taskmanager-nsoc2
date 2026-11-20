@@ -1,4 +1,4 @@
-import { getTodayDate } from './taskUtils';
+import { getTodayDate } from './taskUtils.js';
 
 export const ACTIVITY_KEY = 'activityDays';
 export const LEDGER_KEY = 'pointsLedger';
