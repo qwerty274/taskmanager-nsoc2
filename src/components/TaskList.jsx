@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { getDropPlace } from '../utils/reorderUtils';
 import TaskItem from './TaskItem';
-import { isOverdue, sortTasks, groupTasksByMonth } from '../utils/taskUtils';
+import { filterTasks, sortTasks, groupTasksByMonth } from '../utils/taskUtils';
 
 export default function TaskList({
   tasks,
@@ -13,19 +13,11 @@ export default function TaskList({
   onToggleComplete,
   onDeleteTask,
   onUpdateTaskText,
-  onUpdateTask
+  onUpdateTask,
+  onArchiveTask,
+  onRestoreTask
 }) {
-  const visibleTasks = tasks
-    .filter(task => {
-      if (currentFilter === 'active') return !task.completed;
-      if (currentFilter === 'overdue-task') return isOverdue(task);
-      if (currentFilter === 'done') return task.completed;
-      return true;
-    })
-    .filter(task => {
-      if (!searchQuery) return true;
-      return task.text.toLowerCase().includes(searchQuery.toLowerCase());
-    });
+  const visibleTasks = filterTasks(tasks, currentFilter, searchQuery);
 
   const [draggedTask, setDraggedTask] = useState(null);
   const [dropTarget, setDropTarget] = useState(null);
@@ -43,6 +35,8 @@ export default function TaskList({
       emptyMsg = 'No completed tasks yet. Finish a task to see it here!';
     } else if (currentFilter === 'overdue-task') {
       emptyMsg = '✨ Excellent! No overdue tasks.';
+    } else if (currentFilter === 'archived') {
+      emptyMsg = 'Nothing archived. Archive a task to tuck it away without deleting it.';
     }
 
     return (
@@ -73,6 +67,8 @@ export default function TaskList({
                 onDelete={onDeleteTask}
                 onUpdateText={onUpdateTaskText}
                 onUpdateTask={onUpdateTask}
+                onArchive={onArchiveTask}
+                onRestore={onRestoreTask}
               />
             ))}
           </React.Fragment>
@@ -140,6 +136,8 @@ export default function TaskList({
           onDelete={onDeleteTask}
           onUpdateText={onUpdateTaskText}
           onUpdateTask={onUpdateTask}
+          onArchive={onArchiveTask}
+          onRestore={onRestoreTask}
         />
       ))}
     </ul>

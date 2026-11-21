@@ -3,7 +3,7 @@ import { isOverdue } from '../utils/taskUtils';
 import { getSubtaskProgress, formatSubtaskProgress } from '../utils/subtaskUtils';
 import SubtaskList from './SubtaskList';
 
-export default function TaskItem({ task, reorder, onToggleComplete, onDelete, onUpdateText, onUpdateTask }) {
+export default function TaskItem({ task, reorder, onToggleComplete, onDelete, onUpdateText, onUpdateTask, onArchive, onRestore }) {
   const [isEditing, setIsEditing] = useState(false);
   const [showSubtasks, setShowSubtasks] = useState(false);
   const panelUid = useId();
@@ -186,13 +186,34 @@ export default function TaskItem({ task, reorder, onToggleComplete, onDelete, on
         >
           Subtasks
         </button>
-        <button
-          type="button"
-          className="done-button"
-          onClick={() => onToggleComplete(task)}
-        >
-          {task.completed ? 'Mark as active' : 'Mark as done'}
-        </button>
+        {task.archived ? (
+          <button
+            type="button"
+            className="archive-button"
+            aria-label={`Restore task ${task.text} from the archive`}
+            onClick={() => onRestore(task)}
+          >
+            Restore
+          </button>
+        ) : (
+          <>
+            <button
+              type="button"
+              className="done-button"
+              onClick={() => onToggleComplete(task)}
+            >
+              {task.completed ? 'Mark as active' : 'Mark as done'}
+            </button>
+            <button
+              type="button"
+              className="archive-button"
+              aria-label={`Archive task ${task.text}`}
+              onClick={() => onArchive(task)}
+            >
+              Archive
+            </button>
+          </>
+        )}
         <button
           type="button"
           className="delete-button"

@@ -1,11 +1,14 @@
 import React from 'react';
-import { isOverdue } from '../utils/taskUtils';
+import { isOverdue, getLiveTasks } from '../utils/taskUtils';
 
 export default function StatsDashboard({ tasks, streak, points, currentFilter, onSelectFilter }) {
-  const total = tasks.length;
-  const active = tasks.filter(t => !t.completed).length;
-  const completed = tasks.filter(t => t.completed).length;
-  const overdue = tasks.filter(t => isOverdue(t)).length;
+  // Archived tasks are out of every count.
+  const live = getLiveTasks(tasks);
+  const archivedCount = tasks.length - live.length;
+  const total = live.length;
+  const active = live.filter(t => !t.completed).length;
+  const completed = live.filter(t => t.completed).length;
+  const overdue = live.filter(t => isOverdue(t)).length;
   const percent = total > 0 ? Math.round((completed / total) * 100) : 0;
 
   return (
@@ -66,6 +69,14 @@ export default function StatsDashboard({ tasks, streak, points, currentFilter, o
         <span>
           Points: <strong id="points-balance">{points || 0}</strong>
         </span>
+        <button
+          type="button"
+          className={`archive-link ${currentFilter === 'archived' ? 'active-filter' : ''}`}
+          aria-pressed={currentFilter === 'archived'}
+          onClick={() => onSelectFilter(currentFilter === 'archived' ? 'active' : 'archived')}
+        >
+          Archived: <strong id="stat-archived">{archivedCount}</strong>
+        </button>
       </div>
 
       <div className="progress-container" aria-label="Task completion progress">

@@ -5,7 +5,8 @@ export default function FilterTabs({ currentFilter, onSelectFilter }) {
     { id: 'all', label: 'All' },
     { id: 'active', label: 'Active' },
     { id: 'done', label: 'Done' },
-    { id: 'overdue-task', label: 'Overdue Tasks' }
+    { id: 'overdue-task', label: 'Overdue Tasks' },
+    { id: 'archived', label: 'Archived' }
   ];
 
   return (
