@@ -1,4 +1,5 @@
 import React from 'react';
+import './header.css';
 
 export default function Header({ isLight, onToggleTheme, onOpenBackup }) {
   return (
@@ -10,7 +11,7 @@ export default function Header({ isLight, onToggleTheme, onOpenBackup }) {
           <p className="app-subtitle">Productivity Dashboard</p>
         </div>
       </div>
-      <div className="header-actions">
+      <nav className="header-actions" aria-label="App actions">
         <button
           id="backup-toggle"
           className="header-btn"
@@ -18,8 +19,10 @@ export default function Header({ isLight, onToggleTheme, onOpenBackup }) {
           onClick={onOpenBackup}
           aria-haspopup="dialog"
           aria-label="Backup and restore tasks"
+          title="Backup and restore"
         >
-          <span aria-hidden="true">&#8646;</span> Backup &amp; Restore
+          <span className="header-btn-icon" aria-hidden="true">&#8646;</span>
+          <span className="header-btn-label">Backup &amp; Restore</span>
         </button>
         <button
           id="theme-toggle"
@@ -28,10 +31,12 @@ export default function Header({ isLight, onToggleTheme, onOpenBackup }) {
           onClick={onToggleTheme}
           aria-label={isLight ? 'Switch to dark mode' : 'Switch to light mode'}
           aria-pressed={isLight}
+          title={isLight ? 'Switch to dark mode' : 'Switch to light mode'}
         >
-          {isLight ? 'Dark mode' : 'Light mode'}
+          <span className="header-btn-icon" aria-hidden="true">{isLight ? '\u263E' : '\u2600'}</span>
+          <span className="header-btn-label">{isLight ? 'Dark mode' : 'Light mode'}</span>
         </button>
-      </div>
+      </nav>
     </header>
   );
 }
