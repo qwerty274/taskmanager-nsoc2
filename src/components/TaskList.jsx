@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { getDropPlace } from '../utils/reorderUtils';
 import TaskItem from './TaskItem';
-import { isOverdue, sortTasks, groupTasksByMonth } from '../utils/taskUtils';
+import { sortTasks, groupTasksByMonth, getVisibleTasks } from '../utils/taskUtils';
 
 export default function TaskList({
   tasks,
@@ -10,22 +10,14 @@ export default function TaskList({
   reorderEnabled,
   onMoveTask,
   currentSort,
+  selectedIds,
+  onToggleSelect,
   onToggleComplete,
   onDeleteTask,
   onUpdateTaskText,
   onUpdateTask
 }) {
-  const visibleTasks = tasks
-    .filter(task => {
-      if (currentFilter === 'active') return !task.completed;
-      if (currentFilter === 'overdue-task') return isOverdue(task);
-      if (currentFilter === 'done') return task.completed;
-      return true;
-    })
-    .filter(task => {
-      if (!searchQuery) return true;
-      return task.text.toLowerCase().includes(searchQuery.toLowerCase());
-    });
+  const visibleTasks = getVisibleTasks(tasks, currentFilter, searchQuery);
 
   const [draggedTask, setDraggedTask] = useState(null);
   const [dropTarget, setDropTarget] = useState(null);
@@ -69,6 +61,8 @@ export default function TaskList({
               <TaskItem
                 key={task.id || `${task.text}-${task.dueDate}-${tIdx}`}
                 task={task}
+                isSelected={selectedIds.has(task.id)}
+                onToggleSelect={onToggleSelect}
                 onToggleComplete={onToggleComplete}
                 onDelete={onDeleteTask}
                 onUpdateText={onUpdateTaskText}
@@ -135,6 +129,8 @@ export default function TaskList({
         <TaskItem
           key={task.id || `${task.text}-${task.dueDate}-${idx}`}
           task={task}
+          isSelected={selectedIds.has(task.id)}
+          onToggleSelect={onToggleSelect}
           onToggleComplete={onToggleComplete}
           reorder={reorderEnabled ? getReorderProps(task, idx) : null}
           onDelete={onDeleteTask}
