@@ -1,0 +1,129 @@
+/* Dashboard refresh. Kept separate from index.css; selectors are a notch more
+   specific than the old ones so they apply regardless of load order. */
+
+section.stats-dashboard {
+  margin-top: 20px;
+  padding: 0;
+}
+
+section.stats-dashboard .dash-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px 10px;
+}
+
+section.stats-dashboard .dash-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  color: var(--text);
+}
+
+section.stats-dashboard .dash-sub {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+section.stats-dashboard .stats-grid {
+  border-top: 1px solid var(--border);
+}
+
+section.stats-dashboard .stat-card {
+  padding: 16px 10px;
+  gap: 2px;
+}
+
+section.stats-dashboard .stat-value {
+  font-size: 28px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Streak and points as two side-by-side readouts instead of one run-on line. */
+section.stats-dashboard .streak-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+  padding: 0;
+  border-top: 1px solid var(--border);
+}
+
+section.stats-dashboard .streak-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 12px 16px;
+}
+
+section.stats-dashboard .streak-item + .streak-item {
+  border-left: 1px solid var(--border);
+}
+
+section.stats-dashboard .streak-item-label {
+  font-size: 11px;
+  font-weight: 550;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+section.stats-dashboard .streak-item-value {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+section.stats-dashboard .streak-item-value strong {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+section.stats-dashboard .progress-container {
+  padding: 14px 16px 16px;
+}
+
+section.stats-dashboard .dash-empty {
+  margin: 10px 0 0;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+/* Charts: a little more room and clearer headings. */
+#charts .chart-card {
+  display: flex;
+  flex-direction: column;
+  padding: 18px;
+}
+
+#charts .chart-card h3 {
+  color: var(--text);
+  font-size: 13.5px;
+}
+
+#charts .chart-card canvas {
+  max-width: 100%;
+  min-height: 160px;
+}
+
+@media (max-width: 820px) {
+  #charts {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 680px) {
+  section.stats-dashboard .stat-value {
+    font-size: 24px;
+  }
+
+  section.stats-dashboard .streak-item {
+    padding: 10px 12px;
+  }
+
+  #charts .chart-card {
+    padding: 14px;
+  }
+}
