@@ -191,7 +191,7 @@ may be chosen if it is busy). Opening `index.html` directly or using Live Server
 will not compile JSX or resolve package imports.
 
 ```bash
-npm test                 # Configured backup, date, undo and service worker regression suites
+npm test                 # Configured backup, date, undo, service worker, reorder, streak/points and sorting suites
 npm run build            # Production files in dist/
 npm run preview          # Preview that build; use the printed local URL
 ```
