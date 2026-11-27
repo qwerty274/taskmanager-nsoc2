@@ -296,6 +296,11 @@ export function parseAndValidateJSON(jsonString) {
       completedAt: completedAt
     };
     if (getPomodoros(item) > 0) task.pomodoros = item.pomodoros;
+    // A backup keeps archived tasks archived.
+    if (item.archived === true) {
+      task.archived = true;
+      if (typeof item.archivedAt === 'string') task.archivedAt = item.archivedAt;
+    }
     if (Array.isArray(item.subtasks) && item.subtasks.length > 0) {
       // Keeps the ids from the file when there are some, otherwise makes new ones.
       validatedTasks.push(sanitizeSubtasks({ ...task, subtasks: item.subtasks }));

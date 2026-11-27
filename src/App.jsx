@@ -12,7 +12,7 @@ import PomodoroTimer from './components/PomodoroTimer';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import { useTheme } from './hooks/useTheme';
 import { useUndoDelete } from './hooks/useUndoDelete';
-import { getTodayDate, createTaskId, addPomodoro } from './utils/taskUtils';
+import { getTodayDate, createTaskId, addPomodoro, archiveTask, unarchiveTask } from './utils/taskUtils';
 import { restoreTask } from './utils/undoDelete';
 import { canReorder, moveTask, getMoveMessage } from './utils/reorderUtils';
 import { loadEngineState, recordTaskCompletion, calcStreak, getBalance } from './utils/streakEngine';
@@ -119,6 +119,17 @@ export default function App() {
     setTasks(prev => prev.map(task => (task.id === taskToUpdate.id ? updater(task) : task)));
   };
 
+  // Archiving keeps the task and its place in the list; it only marks it.
+  const handleArchiveTask = async (taskToArchive) => {
+    const saved = await setTasks(prev => prev.map(task => (task.id === taskToArchive.id ? archiveTask(task) : task)));
+    if (saved) setMoveMessage(`Archived "${taskToArchive.text}"`);
+  };
+
+  const handleRestoreTask = async (taskToRestore) => {
+    const saved = await setTasks(prev => prev.map(task => (task.id === taskToRestore.id ? unarchiveTask(task) : task)));
+    if (saved) setMoveMessage(`Restored "${taskToRestore.text}"`);
+  };
+
   const handleToggleHistory = () => {
     setHistoryMode(prev => !prev);
   };
@@ -186,7 +197,7 @@ export default function App() {
             onSortChange={setCurrentSort}
           />
 
-          {historyMode && (
+          {(historyMode || currentFilter === 'archived') && (
             <FilterTabs
               currentFilter={currentFilter}
               onSelectFilter={setCurrentFilter}
@@ -204,6 +215,8 @@ export default function App() {
             onDeleteTask={handleDeleteTask}
             onUpdateTaskText={handleUpdateTaskText}
             onUpdateTask={handleUpdateTask}
+            onArchiveTask={handleArchiveTask}
+            onRestoreTask={handleRestoreTask}
           />
 
           {!reorderEnabled && tasks.length > 0 && (

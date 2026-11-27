@@ -106,6 +106,9 @@ export function isValidTask(task) {
     typeof task.completed === 'boolean' &&
     hasValidCompletedAt &&
     isValidSubtaskList(task.subtasks) &&
+    // Optional: tasks saved before archiving existed have neither field.
+    (task.archived === undefined || typeof task.archived === 'boolean') &&
+    (task.archivedAt === undefined || typeof task.archivedAt === 'string') &&
     isValidPomodoros(task.pomodoros)
   );
 }
@@ -122,11 +125,64 @@ export function clearInvalidDueDate(task) {
 }
 
 /**
+ * Archived tasks are kept in storage but hidden from the normal lists.
+ */
+export function isArchived(task) {
+  return Boolean(task && task.archived);
+}
+
+/**
+ * Returns a copy of the task marked as archived. Nothing else about it changes.
+ */
+export function archiveTask(task, now = new Date()) {
+  return { ...task, archived: true, archivedAt: now.toISOString() };
+}
+
+/**
+ * Returns a copy of the task without the archive marks, so it is back in its
+ * normal list with the completed state it had.
+ */
+export function unarchiveTask(task) {
+  const { archived, archivedAt, ...rest } = task;
+  return rest;
+}
+
+/**
  * Checks if an active task is overdue using local calendar-day boundaries.
  * Tasks due today, without a due date, or with an unusable date are not overdue.
+ * An archived task is out of the way, so it is never overdue.
  */
 export function isOverdue(task, today = getTodayDate()) {
-  return Boolean(isValidDateKey(task.dueDate) && task.dueDate < today && !task.completed);
+  return Boolean(
+    isValidDateKey(task.dueDate) && task.dueDate < today && !task.completed && !isArchived(task)
+  );
+}
+
+/**
+ * The tasks that count as live: everything that is not archived.
+ */
+export function getLiveTasks(taskList) {
+  return taskList.filter(task => !isArchived(task));
+}
+
+/**
+ * The tasks a list view shows for a filter and a search. Every filter except
+ * 'archived' leaves archived tasks out; 'archived' shows only them. The search
+ * is applied inside whichever view is open, so archived tasks can be found
+ * from the Archived view.
+ */
+export function filterTasks(taskList, currentFilter, searchQuery = '', today = getTodayDate()) {
+  const query = searchQuery.toLowerCase();
+  return taskList
+    .filter(task => {
+      if (currentFilter === 'archived') return isArchived(task);
+      if (isArchived(task)) return false;
+      if (currentFilter === 'active') return !task.completed;
+      if (currentFilter === 'overdue-task') return isOverdue(task, today);
+      if (currentFilter === 'done') return task.completed;
+      return true;
+    })
+    .filter(task => !query || task.text.toLowerCase().includes(query));
 }
 
 /**

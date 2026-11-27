@@ -446,6 +446,25 @@ h1 {
   color: var(--muted);
 }
 
+.streak-row .archive-link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  cursor: pointer;
+}
+
+.streak-row .archive-link:hover,
+.streak-row .archive-link.active-filter {
+  color: var(--text);
+}
+
+.streak-row .archive-link:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 2px;
+}
+
 .streak-row strong {
   color: var(--text);
   font-weight: 600;
@@ -897,6 +916,7 @@ h1 {
 }
 
 #todo-list li .done-button,
+#todo-list li .archive-button,
 #todo-list li .edit-button {
   flex: 0 0 auto;
   padding: 5px 10px;
@@ -910,12 +930,14 @@ h1 {
 }
 
 #todo-list li .done-button:hover,
+#todo-list li .archive-button:hover,
 #todo-list li .edit-button:hover {
   background-color: var(--active);
   color: var(--text);
 }
 
 #todo-list li .done-button:focus-visible,
+#todo-list li .archive-button:focus-visible,
 #todo-list li .edit-button:focus-visible {
   outline: 2px solid var(--border-focus);
   outline-offset: 2px;
@@ -1859,7 +1881,7 @@ body.light-mode .app-shell {
 }
 
 body.light-mode :is(#todo-form input, #todo-form select, #task-search,
-  #task-sort, .header-btn, .edit-button, .done-button, .modal-btn,
+  #task-sort, .header-btn, .edit-button, .done-button, .archive-button, .modal-btn,
   .file-drop-area, .month-controls button) {
   border-color: var(--control-border);
 }

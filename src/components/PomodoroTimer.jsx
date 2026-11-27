@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import './PomodoroTimer.css';
+import { isArchived } from '../utils/taskUtils';
 import {
   DEFAULT_CONFIG, LIMITS, clampSetting, formatTime, getPhaseSeconds, nextPhase, secondsLeft
 } from '../utils/pomodoroUtils';
@@ -46,8 +47,8 @@ export default function PomodoroTimer({ tasks = [], onSessionComplete }) {
     }
   }, [tasks, selectedTaskId]);
 
-  // Active tasks, plus the selected one if it was completed during the session.
-  const taskOptions = tasks.filter(task => !task.completed || task.id === selectedTaskId);
+  // Active tasks, plus the selected one if it was completed or archived during the session.
+  const taskOptions = tasks.filter(task => (!task.completed && !isArchived(task)) || task.id === selectedTaskId);
 
   // Tick: recompute from the end timestamp, so a throttled tab only updates late.
   useEffect(() => {
