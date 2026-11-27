@@ -1,15 +1,20 @@
 import React from 'react';
-import { isOverdue } from '../utils/taskUtils';
+import { getDashboardStats, formatStreak } from '../utils/dashboardStats';
+import './dashboard.css';
 
 export default function StatsDashboard({ tasks, streak, points, currentFilter, onSelectFilter }) {
-  const total = tasks.length;
-  const active = tasks.filter(t => !t.completed).length;
-  const completed = tasks.filter(t => t.completed).length;
-  const overdue = tasks.filter(t => isOverdue(t)).length;
-  const percent = total > 0 ? Math.round((completed / total) * 100) : 0;
+  const { total, active, completed, overdue, percent } = getDashboardStats(tasks);
+  const streakInfo = formatStreak(streak);
 
   return (
     <section id="stats-dashboard" className="stats-dashboard" aria-label="Productivity overview">
+      <div className="dash-heading">
+        <h2 className="dash-title">Overview</h2>
+        <span className="dash-sub">
+          {total === 0 ? 'No tasks yet' : `${completed} of ${total} done`}
+        </span>
+      </div>
+
       <div className="stats-grid">
         <button
           type="button"
@@ -57,14 +62,19 @@ export default function StatsDashboard({ tasks, streak, points, currentFilter, o
         </button>
       </div>
 
-      <div className="streak-row" aria-label="Streak and points">
-        <span>
-          Streak: <strong id="streak-current">{streak ? streak.current : 0}</strong>{' '}
-          {streak && streak.current === 1 ? 'day' : 'days'}
-          {streak && streak.longest > 0 ? ` (best ${streak.longest})` : ''}
+      <div className="streak-row" role="group" aria-label="Streak and points">
+        <span className="streak-item">
+          <span className="streak-item-label">Streak</span>
+          <span className="streak-item-value">
+            <strong id="streak-current">{streakInfo.current}</strong> {streakInfo.unit}
+            {streakInfo.best && <span className="streak-best"> ({streakInfo.best})</span>}
+          </span>
         </span>
-        <span>
-          Points: <strong id="points-balance">{points || 0}</strong>
+        <span className="streak-item">
+          <span className="streak-item-label">Points</span>
+          <span className="streak-item-value">
+            <strong id="points-balance">{points || 0}</strong>
+          </span>
         </span>
       </div>
 
@@ -77,6 +87,7 @@ export default function StatsDashboard({ tasks, streak, points, currentFilter, o
           id="progress-bar-wrapper"
           className="progress-bar-bg"
           role="progressbar"
+          aria-label="Completion rate"
           aria-valuenow={percent}
           aria-valuemin="0"
           aria-valuemax="100"
@@ -87,6 +98,9 @@ export default function StatsDashboard({ tasks, streak, points, currentFilter, o
             style={{ width: `${percent}%` }}
           />
         </div>
+        {total === 0 && (
+          <p className="dash-empty">Add a task and your completion rate will show up here.</p>
+        )}
       </div>
     </section>
   );
