@@ -1,38 +1,50 @@
-import { useState, useEffect } from 'react';
-import { isValidTask, clearInvalidDueDate, createTaskId } from '../utils/taskUtils';
-import { sanitizeSubtasks } from '../utils/subtaskUtils';
+import { useState, useEffect, useCallback } from 'react';
+import { parseTasks, commitTasks } from '../utils/taskStorage';
 
 export function useLocalStorage(key, initialValue) {
+  const [error, setError] = useState('');
+  const read = useCallback(() => {
+    const raw = window.localStorage.getItem(key);
+    return key === 'tasks' ? parseTasks(raw) : raw === null ? initialValue : JSON.parse(raw);
+  }, [key]);
   const [storedValue, setStoredValue] = useState(() => {
-    try {
-      const item = window.localStorage.getItem(key);
-      if (!item) return initialValue;
-      const parsed = JSON.parse(item);
-      if (key === 'tasks') {
-        if (!Array.isArray(parsed)) return initialValue;
-        // Older saved tasks have no id, so give them one.
-        // A task with an impossible due date keeps its text and loses only the date.
-        // Broken subtask entries are dropped; tasks without subtasks stay as they are.
-        return parsed
-          .map(clearInvalidDueDate)
-          .map(sanitizeSubtasks)
-          .filter(isValidTask)
-          .map(task => (task.id ? task : { ...task, id: createTaskId() }));
-      }
-      return parsed;
-    } catch (error) {
-      console.warn(`Error reading localStorage key "${key}":`, error);
-      return initialValue;
-    }
+    try { return read(); }
+    catch { return initialValue; }
   });
+  const writable = key !== 'tasks' || Boolean(navigator.locks?.request);
 
   useEffect(() => {
-    try {
-      window.localStorage.setItem(key, JSON.stringify(storedValue));
-    } catch (error) {
-      console.error(`Error saving localStorage key "${key}":`, error);
-    }
-  }, [key, storedValue]);
+    const refresh = () => {
+      try { setStoredValue(read()); setError(''); }
+      catch { setError('Saved tasks could not be read. Existing data has been kept.'); }
+    };
+    const onStorage = event => {
+      if (event.storageArea === localStorage && (event.key === key || event.key === null)) refresh();
+    };
+    window.addEventListener('storage', onStorage);
+    // Reconcile events that happened between the initial render and subscription.
+    refresh();
+    return () => window.removeEventListener('storage', onStorage);
+  }, [key, read]);
 
-  return [storedValue, setStoredValue];
+  const setValue = useCallback(async update => {
+    try {
+      if (key === 'tasks') {
+        await commitTasks(localStorage, navigator.locks, update);
+      } else {
+        const previous = read();
+        const next = typeof update === 'function' ? update(previous) : update;
+        localStorage.setItem(key, JSON.stringify(next));
+      }
+      // Another tab may have committed while this promise resumed.
+      setStoredValue(read());
+      setError('');
+      return true;
+    } catch (failure) {
+      setError('Tasks were not saved: ' + failure.message);
+      return false;
+    }
+  }, [key, read]);
+
+  return [storedValue, setValue, { writable, error }];
 }

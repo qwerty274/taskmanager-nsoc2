@@ -10,19 +10,18 @@ import BackupModal from './components/BackupModal';
 import UndoToast from './components/UndoToast';
 import BulkActionBar from './components/BulkActionBar';
 import PomodoroTimer from './components/PomodoroTimer';
-import './components/prompt.css';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import { useTheme } from './hooks/useTheme';
 import { useTaskSelection } from './hooks/useTaskSelection';
 import { useUndoDelete } from './hooks/useUndoDelete';
-import { getTodayDate, createTaskId, getVisibleTasks } from './utils/taskUtils';
+import { getTodayDate, createTaskId, addPomodoro, getVisibleTasks } from './utils/taskUtils';
 import { restoreEntry } from './utils/undoDelete';
 import { applyBulkAction, getDeletedItems, getNewlyCompleted } from './utils/bulkActions';
 import { canReorder, moveTask, getMoveMessage } from './utils/reorderUtils';
 import { loadEngineState, recordTaskCompletion, calcStreak, getBalance } from './utils/streakEngine';
 
 export default function App() {
-  const [tasks, setTasks] = useLocalStorage('tasks', []);
+  const [tasks, setTasks, taskStorage] = useLocalStorage('tasks', []);
   const [engine, setEngine] = useState(() => loadEngineState());
   const { isLight, toggleTheme } = useTheme();
   const undoDelete = useUndoDelete();
@@ -35,10 +34,9 @@ export default function App() {
   const [moveMessage, setMoveMessage] = useState('');
   const reorderEnabled = canReorder(currentFilter, searchQuery, currentSort);
   const [, setLastRenderDate] = useState(getTodayDate());
+  const [showTimer, setShowTimer] = useState(false);
   const visibleTasks = getVisibleTasks(tasks, currentFilter, searchQuery);
   const selection = useTaskSelection(visibleTasks);
-  const [taskId, setTaskId] = useState('');
-  const [taskIdPrompt, setTaskIdPrompt] = useState(false);
 
   // Automatic overdue refresh when midnight passes or tab becomes visible
   useEffect(() => {
@@ -65,56 +63,57 @@ export default function App() {
     };
   }, []);
 
-  const handleAddTask = (newTask) => {
-    setTasks(prev => [...prev, newTask]);
+  const handleAddTask = async (newTask) => {
+    const saved = await setTasks(prev => [...prev, newTask]);
+    if (!saved) return false;
     if (!historyMode && currentFilter !== 'all') {
       setCurrentFilter('active');
     }
+    return true;
   };
 
-  const handleToggleComplete = (taskToToggle) => {
-    // Only a new completion counts. Un-completing does not take points back.
-    if (!taskToToggle.completed) {
-      setEngine(recordTaskCompletion(taskToToggle.id));
-    }
-    setTasks(prev =>
-      prev.map(task => {
-        if (task === taskToToggle) {
-          const nextCompleted = !task.completed;
-          return {
-            ...task,
-            completed: nextCompleted,
-            completedAt: nextCompleted ? new Date().toISOString() : null
-          };
-        }
-        return task;
-      })
-    );
+  const handleToggleComplete = async (taskToToggle) => {
+    let completedId;
+    const saved = await setTasks(prev => prev.map(task => {
+      if (task.id !== taskToToggle.id) return task;
+      if (!task.completed) completedId = task.id;
+      return { ...task, completed: !task.completed, completedAt: task.completed ? null : new Date().toISOString() };
+    }));
+    if (saved && completedId) setEngine(recordTaskCompletion(completedId));
   };
 
-  const handleDeleteTask = (taskToDelete) => {
-    const index = tasks.indexOf(taskToDelete);
-    if (index === -1) return;
-    undoDelete.recordDelete(taskToDelete, index, tasks[index - 1]?.id);
-    setTasks(prev => prev.filter(task => task !== taskToDelete));
+  const handleDeleteTask = async (taskToDelete) => {
+    let deleted;
+    const saved = await setTasks(prev => {
+      const index = prev.findIndex(task => task.id === taskToDelete.id);
+      if (index === -1) return prev;
+      deleted = { task: prev[index], index, afterId: prev[index - 1]?.id };
+      return prev.filter(task => task.id !== taskToDelete.id);
+    });
+    if (saved && deleted) undoDelete.recordDelete(deleted.task, deleted.index, deleted.afterId);
   };
 
-  const handleUndoDelete = () => {
-    const entry = undoDelete.undo();
-    if (entry) setTasks(prev => restoreEntry(prev, entry));
+  const handleUndoDelete = async () => {
+    const entry = undoDelete.peek();
+    if (!entry) return;
+    undoDelete.pause();
+    const saved = await setTasks(prev => restoreEntry(prev, entry));
+    if (saved && undoDelete.peek() === entry) undoDelete.undo();
+    undoDelete.resume();
   };
 
   // An import replaces the whole list, so saved positions no longer mean anything.
   // Imported records have no id yet, and selecting and moving tasks go by id.
-  const handleTasksUpdate = (nextTasks) => {
-    undoDelete.dismiss();
-    setTasks(nextTasks.map(task => (task.id ? task : { ...task, id: createTaskId() })));
+  const handleTasksUpdate = async (nextTasks) => {
+    const saved = await setTasks(nextTasks.map(task => (task.id ? task : { ...task, id: createTaskId() })));
+    if (saved) undoDelete.dismiss();
+    return saved;
   };
 
   const handleUpdateTaskText = (taskToUpdate, newText) => {
     setTasks(prev =>
       prev.map(task =>
-        task === taskToUpdate ? { ...task, text: newText } : task
+        task.id === taskToUpdate.id ? { ...task, text: newText } : task
       )
     );
   };
@@ -122,7 +121,7 @@ export default function App() {
   // Swaps one task for updater(task). Used for changes that do not need their
   // own handler, like the subtask checklist.
   const handleUpdateTask = (taskToUpdate, updater) => {
-    setTasks(prev => prev.map(task => (task === taskToUpdate ? updater(task) : task)));
+    setTasks(prev => prev.map(task => (task.id === taskToUpdate.id ? updater(task) : task)));
   };
 
   const handleToggleHistory = () => {
@@ -130,11 +129,17 @@ export default function App() {
   };
 
   // The tasks array is saved as is, so the new order survives a refresh.
-  const handleMoveTask = (task, target, place) => {
-    const next = moveTask(tasks, task, target, place);
-    if (next === tasks) return;
-    setTasks(next);
-    setMoveMessage(getMoveMessage(next, task));
+  const handleMoveTask = async (task, target, place) => {
+    let announcement = '';
+    const saved = await setTasks(prev => {
+      const current = prev.find(item => item.id === task.id);
+      const destination = prev.find(item => item.id === target.id);
+      if (!current || !destination) return prev;
+      const next = moveTask(prev, current, destination, place);
+      announcement = getMoveMessage(next, current);
+      return next;
+    });
+    if (saved) setMoveMessage(announcement);
   };
 
   const handleClearSearch = () => {
@@ -142,28 +147,28 @@ export default function App() {
   };
 
   // Runs one bulk action on what is ticked and on screen, then clears the ticks.
-  const handleBulkAction = (action) => {
+  // The undo entry and points come from the saved list, which another tab may
+  // have changed, and only after the write went through.
+  const handleBulkAction = async (action) => {
     const selectedIds = new Set(selection.selectedTasks.map(task => task.id));
-    if (action.type === 'delete') {
-      undoDelete.recordDeleteGroup(getDeletedItems(tasks, selectedIds));
-    }
-    if (action.type === 'complete') {
+    let deleted = [];
+    let completed = [];
+    const saved = await setTasks(prev => {
+      if (action.type === 'delete') deleted = getDeletedItems(prev, selectedIds);
       // Same rule as completing one task: only a new completion counts.
-      getNewlyCompleted(tasks, selectedIds).forEach(task => setEngine(recordTaskCompletion(task.id)));
-    }
-    setTasks(prev => applyBulkAction(prev, selectedIds, action));
+      if (action.type === 'complete') completed = getNewlyCompleted(prev, selectedIds);
+      return applyBulkAction(prev, selectedIds, action);
+    });
+    if (!saved) return;
+    if (deleted.length > 0) undoDelete.recordDeleteGroup(deleted);
+    completed.forEach(task => setEngine(recordTaskCompletion(task.id)));
     selection.clear();
   };
 
-  const handleSessionComplete = (sessionType, durationMinutes) => {
-    // Callback from PomodoroTimer when a session ends.
-    // We could optionally show a notification or update task progress,
-    // but we do NOT automatically mark tasks as completed unless explicitly designed.
-    // For now, just log the session completion.
-    // You could integrate with the engine here if desired.
-    // Example: recordTaskCompletion or streak updates could go here.
-    // For now, we just announce it.
-    // TODO: Add any desired session completion handling.
+  // A focus session that ran to the end adds one pomodoro to the chosen task.
+  const handleSessionComplete = (sessionType, durationMinutes, taskId) => {
+    if (sessionType !== 'focus' || !taskId) return;
+    setTasks(prev => prev.map(task => (task.id === taskId ? addPomodoro(task) : task)));
   };
 
   return (
@@ -172,107 +177,87 @@ export default function App() {
         isLight={isLight}
         onToggleTheme={toggleTheme}
         onOpenBackup={() => setIsBackupOpen(true)}
+        showTimer={showTimer}
+        onToggleTimer={() => setShowTimer(prev => !prev)}
       />
 
-      <TaskForm
-        onAddTask={handleAddTask}
-        historyMode={historyMode}
-        onToggleHistory={handleToggleHistory}
-      />
+      {!taskStorage.writable && <p role="alert">Task editing is read-only because this browser does not support Web Locks. Your saved tasks are still available.</p>}
+      {taskStorage.error && <p role="alert">{taskStorage.error}</p>}
+      <div className="flip-scene">
+        <div className={`flip-inner${showTimer ? ' is-flipped' : ''}`}>
+          <div className="flip-face" aria-hidden={showTimer} inert={showTimer ? '' : undefined}>
+          <fieldset disabled={!taskStorage.writable} style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
+          <legend className="visually-hidden">Tasks</legend>
+          <TaskForm
+            onAddTask={handleAddTask}
+            historyMode={historyMode}
+            onToggleHistory={handleToggleHistory}
+          />
 
-      <StatsDashboard
-        tasks={tasks}
-        streak={calcStreak(engine.activityDays)}
-        points={getBalance(engine.ledger)}
-        currentFilter={currentFilter}
-        onSelectFilter={setCurrentFilter}
-      />
+          <StatsDashboard
+            tasks={tasks}
+            streak={calcStreak(engine.activityDays)}
+            points={getBalance(engine.ledger)}
+            currentFilter={currentFilter}
+            onSelectFilter={setCurrentFilter}
+          />
 
-      <TaskToolbar
-        searchQuery={searchQuery}
-        onSearchChange={setSearchQuery}
-        onClearSearch={handleClearSearch}
-        currentSort={currentSort}
-        onSortChange={setCurrentSort}
-      />
+          <TaskToolbar
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+            onClearSearch={handleClearSearch}
+            currentSort={currentSort}
+            onSortChange={setCurrentSort}
+          />
 
-      <PomodoroTimer
-        taskId={taskId || undefined}
-        onSessionComplete={handleSessionComplete}
-      />
-
-      {taskIdPrompt && (
-        <div id="pomodoro-task-id-prompt" className="pomodoro-task-id-prompt">
-          <label htmlFor="pomodoro-task-id-input" className="pomodoro-task-id-label">
-            Associate timer with task ID:
-            <input
-              id="pomodoro-task-id-input"
-              type="text"
-              value={taskId}
-              onChange={(e) => setTaskId(e.target.value)}
-              aria-label="Task ID to associate with timer"
+          {historyMode && (
+            <FilterTabs
+              currentFilter={currentFilter}
+              onSelectFilter={setCurrentFilter}
             />
-          </label>
-          <button
-            type="button"
-            className="pomodoro-task-id-btn"
-            onClick={() => setTaskIdPrompt(false)}
-            aria-label="Cancel"
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            className="pomodoro-task-id-btn pomodoro-task-id-btn--primary"
-            onClick={() => setTaskIdPrompt(false)}
-            aria-label="Set task ID"
-          >
-            Set
-          </button>
+          )}
+
+          <BulkActionBar
+            selectedTasks={selection.selectedTasks}
+            visibleCount={visibleTasks.length}
+            onSelectAll={selection.selectAll}
+            onClear={selection.clear}
+            onComplete={() => handleBulkAction({ type: 'complete' })}
+            onSetPriority={(priority) => handleBulkAction({ type: 'priority', priority })}
+            onDelete={() => handleBulkAction({ type: 'delete' })}
+          />
+
+          <TaskList
+            tasks={tasks}
+            currentFilter={currentFilter}
+            searchQuery={searchQuery}
+            reorderEnabled={reorderEnabled}
+            onMoveTask={handleMoveTask}
+            currentSort={currentSort}
+            selectedIds={selection.ids}
+            onToggleSelect={selection.toggle}
+            onToggleComplete={handleToggleComplete}
+            onDeleteTask={handleDeleteTask}
+            onUpdateTaskText={handleUpdateTaskText}
+            onUpdateTask={handleUpdateTask}
+          />
+
+          {!reorderEnabled && tasks.length > 0 && (
+            <p className="reorder-hint">
+              To reorder tasks, open the Active list with no search and sort set to Default.
+            </p>
+          )}
+          <p className="visually-hidden" role="status">{moveMessage}</p>
+
+          {historyMode && <ChartsOverview tasks={tasks} isLight={isLight} />}
+
+          </fieldset>
+          </div>
+          <div className="flip-face flip-face--back" aria-hidden={!showTimer} inert={!showTimer ? '' : undefined}>
+            <PomodoroTimer tasks={tasks} onSessionComplete={handleSessionComplete} />
+          </div>
         </div>
-      )}
-
-      {historyMode && (
-        <FilterTabs
-          currentFilter={currentFilter}
-          onSelectFilter={setCurrentFilter}
-        />
-      )}
-
-      <BulkActionBar
-        selectedTasks={selection.selectedTasks}
-        visibleCount={visibleTasks.length}
-        onSelectAll={selection.selectAll}
-        onClear={selection.clear}
-        onComplete={() => handleBulkAction({ type: 'complete' })}
-        onSetPriority={(priority) => handleBulkAction({ type: 'priority', priority })}
-        onDelete={() => handleBulkAction({ type: 'delete' })}
-      />
-
-      <TaskList
-        tasks={tasks}
-        currentFilter={currentFilter}
-        searchQuery={searchQuery}
-        reorderEnabled={reorderEnabled}
-        onMoveTask={handleMoveTask}
-        currentSort={currentSort}
-        selectedIds={selection.ids}
-        onToggleSelect={selection.toggle}
-        onToggleComplete={handleToggleComplete}
-        onDeleteTask={handleDeleteTask}
-        onUpdateTaskText={handleUpdateTaskText}
-        onUpdateTask={handleUpdateTask}
-      />
-
-      {!reorderEnabled && tasks.length > 0 && (
-        <p className="reorder-hint">
-          To reorder tasks, open the Active list with no search and sort set to Default.
-        </p>
-      )}
-      <p className="visually-hidden" role="status">{moveMessage}</p>
-
-      {historyMode && <ChartsOverview tasks={tasks} isLight={isLight} />}
-
+      </div>
       <BackupModal
         isOpen={isBackupOpen}
         onClose={() => setIsBackupOpen(false)}

@@ -83,6 +83,7 @@ export function useUndoDelete() {
     count: stack.length,
     recordDelete,
     recordDeleteGroup,
+    peek: () => stackRef.current[stackRef.current.length - 1] || null,
     undo,
     dismiss,
     pause,

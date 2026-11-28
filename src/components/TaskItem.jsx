@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useId } from 'react';
-import { isOverdue } from '../utils/taskUtils';
+import { isOverdue, getPomodoros } from '../utils/taskUtils';
 import { getSubtaskProgress, formatSubtaskProgress } from '../utils/subtaskUtils';
 import SubtaskList from './SubtaskList';
 
@@ -74,6 +74,7 @@ export default function TaskItem({ task, isSelected, onToggleSelect, reorder, on
   const priorityClass = String(task.priority || 'medium').toLowerCase();
   const overdue = isOverdue(task);
   const progress = getSubtaskProgress(task);
+  const pomodoros = getPomodoros(task);
   const panelId = `subtasks-${panelUid}`;
 
   return (
@@ -107,6 +108,9 @@ export default function TaskItem({ task, isSelected, onToggleSelect, reorder, on
       />
 
       <span className="task-details">
+        <span className={`priority-label priority-label-${priorityClass}`}>
+          {task.priority || 'medium'} priority
+        </span>
         {overdue && <span className="overdue-badge">Overdue</span>}
 
         {isEditing ? (
@@ -139,6 +143,17 @@ export default function TaskItem({ task, isSelected, onToggleSelect, reorder, on
               <span style={{ width: `${(progress.done / progress.total) * 100}%` }} />
             </span>
             <span aria-hidden="true">{formatSubtaskProgress(task)}</span>
+          </span>
+        )}
+
+        {pomodoros > 0 && (
+          <span
+            className="pomodoro-count"
+            role="img"
+            aria-label={`${pomodoros} focus ${pomodoros === 1 ? 'session' : 'sessions'} finished`}
+            title={`${pomodoros} focus ${pomodoros === 1 ? 'session' : 'sessions'} finished`}
+          >
+            <span aria-hidden="true">&#127813; {pomodoros}</span>
           </span>
         )}
       </span>

@@ -1,5 +1,34 @@
 import { isValidSubtaskList } from './subtaskUtils.js';
 
+/**
+ * True when a stored pomodoro count is usable: missing (older tasks) or a whole
+ * number of 0 or more.
+ */
+export function isValidPomodoros(value) {
+  return value === undefined || (Number.isInteger(value) && value >= 0);
+}
+
+/** Focus sessions finished on a task. Older tasks have no field, so 0. */
+export function getPomodoros(task) {
+  return task && Number.isInteger(task.pomodoros) && task.pomodoros > 0 ? task.pomodoros : 0;
+}
+
+/** Returns a copy of the task with one more finished focus session. */
+export function addPomodoro(task) {
+  return { ...task, pomodoros: getPomodoros(task) + 1 };
+}
+
+/**
+ * Drops a broken pomodoros field so the task is kept (as 0) instead of being
+ * thrown away by isValidTask.
+ */
+export function clearInvalidPomodoros(task) {
+  if (!task || typeof task !== 'object' || !('pomodoros' in task)) return task;
+  if (isValidPomodoros(task.pomodoros)) return task;
+  const { pomodoros, ...rest } = task;
+  return rest;
+}
+
 export const priorityWeights = { high: 3, medium: 2, low: 1 };
 
 const DATE_KEY_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
@@ -59,6 +88,7 @@ export function isValidDateKey(value) {
  * Checks whether a stored record has the required task fields and types.
  * dueDate may be empty (no due date) or a real YYYY-MM-DD date.
  * subtasks is optional (older tasks have none) but must be a valid list if present.
+ * pomodoros is optional (older tasks have none) but must be a whole number >= 0 if present.
  */
 export function isValidTask(task) {
   if (!task || typeof task !== 'object' || Array.isArray(task)) return false;
@@ -75,7 +105,8 @@ export function isValidTask(task) {
     ['low', 'medium', 'high'].includes(task.priority) &&
     typeof task.completed === 'boolean' &&
     hasValidCompletedAt &&
-    isValidSubtaskList(task.subtasks)
+    isValidSubtaskList(task.subtasks) &&
+    isValidPomodoros(task.pomodoros)
   );
 }
 
