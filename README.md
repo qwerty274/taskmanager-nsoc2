@@ -246,7 +246,7 @@ statistics. Importing already-completed tasks does not count as a new completion
 | :--- | :--- |
 | `N` | Jump to the new task field |
 | `/` | Jump to search |
-| `?` | Open the shortcuts list (also the **Shortcuts** button in the header on wider screens) |
+| `?` | Open the shortcuts list (also the **?** button in the header on wider screens) |
 | `Esc` | Close the open dialog, or cancel a task edit |
 | `Ctrl + D` | Clear the text field you are typing in (`Cmd + D` on a Mac) |
 | `Ctrl + Z` | Undo a delete while the undo message is up (`Cmd + Z` on a Mac) |

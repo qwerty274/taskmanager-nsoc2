@@ -76,6 +76,7 @@ export function useUndoDelete() {
     latest: stack.length ? stack[stack.length - 1].task : null,
     count: stack.length,
     recordDelete,
+    peek: () => stackRef.current[stackRef.current.length - 1] || null,
     undo,
     dismiss,
     pause,

@@ -12,16 +12,27 @@
   font-family: var(--font);
 }
 
-.pomodoro-timer[sr-only] {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border: 0;
+/* Task picker */
+.pomodoro-task-select {
+  display: grid;
+  gap: 4px;
+  margin-bottom: 12px;
+  font-size: 13px;
+}
+
+.pomodoro-task-select select {
+  max-width: 100%;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  background-color: var(--raised);
+  color: var(--text);
+  font-size: 13px;
+}
+
+.pomodoro-phase {
+  margin: 0 0 4px;
+  font-weight: 600;
 }
 
 /* Controls */
@@ -91,30 +102,37 @@
   line-height: 1;
 }
 
-/* Config panel */
+/* Settings (custom durations). Disabled while the timer runs. */
 .pomodoro-config {
-  margin-top: 16px;
+  display: grid;
+  gap: 8px;
+  margin: 16px 0;
   padding: 12px;
   border: 1px solid var(--border);
   border-radius: var(--radius-control);
   background-color: var(--raised);
 }
 
+.pomodoro-config:disabled {
+  opacity: 0.6;
+}
+
 .pomodoro-config label {
-  display: block;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
   font-size: 13px;
-  margin-bottom: 8px;
 }
 
 .pomodoro-config input {
-  width: 100%;
+  width: 5rem;
   padding: 6px 10px;
   border: 1px solid var(--border);
   border-radius: var(--radius-control);
   background-color: var(--raised);
   color: var(--text);
   font-size: 13px;
-  margin-top: 4px;
 }
 
 .pomodoro-config input:focus {
@@ -130,17 +148,85 @@
   text-align: center;
 }
 
-/* Task association */
-.pomodoro-task-association {
-  font-size: 12px;
-  color: var(--faint);
-  text-align: center;
-  margin-top: 8px;
+/* Finished focus sessions shown on a task row */
+.pomodoro-count {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 8px;
+  padding: 2px 8px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 0.8rem;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+/* "Entering full screen" prompt */
+.pomodoro-dialog {
+  max-width: 360px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--text);
+}
+
+.pomodoro-dialog::backdrop {
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.pomodoro-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+/* Fullscreen layout */
+.pomodoro-timer:fullscreen {
+  max-width: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: var(--ground);
+}
+
+.pomodoro-timer:fullscreen .pomodoro-display {
+  font-size: clamp(4rem, 20vw, 12rem);
+}
+
+/* Flip between the task dashboard and the timer */
+.flip-scene {
+  perspective: 1400px;
+}
+
+.flip-inner {
+  display: grid;
+  transition: transform 0.6s;
+  transform-style: preserve-3d;
+}
+
+.flip-inner.is-flipped {
+  transform: rotateY(180deg);
+}
+
+.flip-face {
+  grid-area: 1 / 1;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+.flip-face--back {
+  transform: rotateY(180deg);
 }
 
 /* Reduced motion */
 @media (prefers-reduced-motion: reduce) {
   .pomodoro-btn {
+    transition: none;
+  }
+
+  .flip-inner {
     transition: none;
   }
 }

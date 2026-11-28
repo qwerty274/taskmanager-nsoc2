@@ -1,6 +1,6 @@
 import React from 'react';
 
-export default function Header({ isLight, onToggleTheme, onOpenBackup, onOpenShortcuts }) {
+export default function Header({ isLight, onToggleTheme, onOpenBackup, onOpenShortcuts, showTimer, onToggleTimer }) {
   return (
     <header className="app-header">
       <div className="brand">
@@ -12,14 +12,25 @@ export default function Header({ isLight, onToggleTheme, onOpenBackup, onOpenSho
       </div>
       <div className="header-actions">
         <button
+          id="timer-toggle"
+          className="header-btn"
+          type="button"
+          onClick={onToggleTimer}
+          aria-pressed={showTimer}
+        >
+          {showTimer ? 'Back to tasks' : 'Focus timer'}
+        </button>
+        <button
           id="shortcuts-toggle"
           className="header-btn"
           type="button"
           onClick={onOpenShortcuts}
           aria-haspopup="dialog"
           aria-keyshortcuts="?"
+          aria-label="Keyboard shortcuts"
+          title="Keyboard shortcuts"
         >
-          Shortcuts
+          ?
         </button>
         <button
           id="backup-toggle"
