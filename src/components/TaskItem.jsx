@@ -3,7 +3,7 @@ import { isOverdue, getPomodoros } from '../utils/taskUtils';
 import { getSubtaskProgress, formatSubtaskProgress } from '../utils/subtaskUtils';
 import SubtaskList from './SubtaskList';
 
-export default function TaskItem({ task, reorder, onToggleComplete, onDelete, onUpdateText, onUpdateTask }) {
+export default function TaskItem({ task, isSelected, onToggleSelect, reorder, onToggleComplete, onDelete, onUpdateText, onUpdateTask }) {
   const [isEditing, setIsEditing] = useState(false);
   const [showSubtasks, setShowSubtasks] = useState(false);
   const panelUid = useId();
@@ -66,6 +66,7 @@ export default function TaskItem({ task, reorder, onToggleComplete, onDelete, on
 
   const rowClass = [
     task.completed && 'is-complete',
+    isSelected && 'is-selected',
     reorder?.isDragging && 'is-dragging',
     reorder?.dropPlace && `drop-${reorder.dropPlace}`
   ].filter(Boolean).join(' ');
@@ -90,6 +91,15 @@ export default function TaskItem({ task, reorder, onToggleComplete, onDelete, on
           &#8942;&#8942;
         </span>
       )}
+
+      <label className="task-select">
+        <input
+          type="checkbox"
+          aria-label={`Select task ${task.text}`}
+          checked={isSelected}
+          onChange={() => onToggleSelect(task)}
+        />
+      </label>
 
       <span
         className={`status-dot priority-${priorityClass}`}
