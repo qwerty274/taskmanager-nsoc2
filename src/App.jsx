@@ -7,9 +7,11 @@ import FilterTabs from './components/FilterTabs';
 import TaskList from './components/TaskList';
 import ChartsOverview from './components/ChartsOverview';
 import BackupModal from './components/BackupModal';
+import ShortcutsDialog from './components/ShortcutsDialog';
 import UndoToast from './components/UndoToast';
 import PomodoroTimer from './components/PomodoroTimer';
 import { useLocalStorage } from './hooks/useLocalStorage';
+import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { useTheme } from './hooks/useTheme';
 import { useUndoDelete } from './hooks/useUndoDelete';
 import { getTodayDate, createTaskId, addPomodoro } from './utils/taskUtils';
@@ -22,6 +24,7 @@ export default function App() {
   const [engine, setEngine] = useState(() => loadEngineState());
   const { isLight, toggleTheme } = useTheme();
   const undoDelete = useUndoDelete();
+  const shortcuts = useKeyboardShortcuts();
 
   const [isBackupOpen, setIsBackupOpen] = useState(false);
   const [historyMode, setHistoryMode] = useState(false);
@@ -153,6 +156,7 @@ export default function App() {
         isLight={isLight}
         onToggleTheme={toggleTheme}
         onOpenBackup={() => setIsBackupOpen(true)}
+        onOpenShortcuts={shortcuts.openHelp}
         showTimer={showTimer}
         onToggleTimer={() => setShowTimer(prev => !prev)}
       />
@@ -228,6 +232,8 @@ export default function App() {
         tasks={tasks}
         onTasksUpdate={handleTasksUpdate}
       />
+
+      <ShortcutsDialog isOpen={shortcuts.isHelpOpen} onClose={shortcuts.closeHelp} />
 
       <UndoToast
         task={undoDelete.latest}
