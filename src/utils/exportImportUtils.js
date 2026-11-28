@@ -1,14 +1,6 @@
-import { isValidDateKey } from './taskUtils.js';
+import { isValidDateKey, isValidPomodoros, getPomodoros } from './taskUtils.js';
 import { sanitizeSubtasks, subtasksToText, textToSubtasks } from './subtaskUtils.js';
 
-/**
- * Utility functions for Task Backup, Export, and Import
- */
-
-/**
- * Initiates a browser download for given content and MIME type.
- * Delays URL.revokeObjectURL to ensure asynchronous download processing completes.
- */
 export function downloadFile(content, fileName, mimeType) {
   const blob = new Blob([content], { type: mimeType });
   const url = URL.createObjectURL(blob);
@@ -49,9 +41,12 @@ export function exportTasksToCSV(taskList) {
   // The subtasks column is only added when some task has subtasks, so a backup
   // of plain tasks keeps the same columns as before. One subtask per line,
   // "[x] text" when done and "[ ] text" when not.
+  // The pomodoros column works the same way: only added when some task has a count.
   const hasSubtasks = taskList.some(task => Array.isArray(task.subtasks) && task.subtasks.length > 0);
+  const hasPomodoros = taskList.some(task => getPomodoros(task) > 0);
   const headers = ['text', 'dueDate', 'priority', 'completed', 'completedAt'];
   if (hasSubtasks) headers.push('subtasks');
+  if (hasPomodoros) headers.push('pomodoros');
   const rows = taskList.map(task => {
     const cells = [
       escapeCSVCell(task.text || ''),
@@ -61,6 +56,7 @@ export function exportTasksToCSV(taskList) {
       escapeCSVCell(task.completedAt || '')
     ];
     if (hasSubtasks) cells.push(escapeCSVCell(subtasksToText(task.subtasks)));
+    if (hasPomodoros) cells.push(String(getPomodoros(task)));
     return cells.join(',');
   });
   return [headers.join(','), ...rows].join('\r\n');
@@ -146,6 +142,10 @@ export function validateTaskRecord(task, index) {
       return { valid: false, error: `Task #${rowNum} has an invalid 'completedAt' timestamp.` };
     }
   }
+  // Optional: backups made before pomodoro counts existed do not have the field.
+  if (!isValidPomodoros(task.pomodoros)) {
+    return { valid: false, error: `Task #${rowNum} has an invalid 'pomodoros' count (must be a whole number, 0 or more).` };
+  }
   // Optional: backups made before subtasks existed do not have the field.
   if (task.subtasks !== undefined) {
     if (!Array.isArray(task.subtasks)) {
@@ -220,6 +220,15 @@ export function parseAndValidateCSV(csvContent) {
       completed: isCompleted,
       completedAt: completedAt
     };
+    if (headerMap['pomodoros'] !== undefined) {
+      const raw = String(row[headerMap['pomodoros']] || '').trim();
+      if (raw !== '') {
+        if (!/^\d+$/.test(raw)) {
+          return { success: false, error: `Task #${i} has an invalid 'pomodoros' count ("${raw}"). Use a whole number.` };
+        }
+        if (Number(raw) > 0) candidate.pomodoros = Number(raw);
+      }
+    }
     const subtasks = headerMap['subtasks'] !== undefined ? textToSubtasks(row[headerMap['subtasks']] || '') : [];
     if (subtasks.length > 0) candidate.subtasks = subtasks;
 
@@ -286,6 +295,7 @@ export function parseAndValidateJSON(jsonString) {
       completed: Boolean(item.completed),
       completedAt: completedAt
     };
+    if (getPomodoros(item) > 0) task.pomodoros = item.pomodoros;
     if (Array.isArray(item.subtasks) && item.subtasks.length > 0) {
       // Keeps the ids from the file when there are some, otherwise makes new ones.
       validatedTasks.push(sanitizeSubtasks({ ...task, subtasks: item.subtasks }));

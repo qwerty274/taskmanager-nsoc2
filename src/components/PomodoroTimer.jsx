@@ -200,6 +200,9 @@ export default function PomodoroTimer({ tasks = [] }) {
           🍅
         </span>
       </div>
+      <p className="pomodoro-session-info">
+        Focus sessions done in this cycle: {completedFocus} of {config.sessionsUntilLongBreak}
+      </p>
 
       <div className="pomodoro-modes">
         {Object.keys(MODE_LABELS).map((item) => (

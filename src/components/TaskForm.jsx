@@ -7,9 +7,10 @@ export default function TaskForm({ onAddTask, historyMode, onToggleHistory }) {
   const [priority, setPriority] = useState('medium');
   const [isPressed, setIsPressed] = useState(false);
   const [error, setError] = useState('');
+  const [saving, setSaving] = useState(false);
   const inputRef = useRef(null);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const trimmed = text.trim();
     if (!trimmed) {
@@ -19,7 +20,9 @@ export default function TaskForm({ onAddTask, historyMode, onToggleHistory }) {
     }
     setError('');
 
-    onAddTask({
+    if (saving) return;
+    setSaving(true);
+    const saved = await onAddTask({
       id: createTaskId(),
       text: trimmed,
       dueDate: dueDate || getTodayDate(),
@@ -28,6 +31,8 @@ export default function TaskForm({ onAddTask, historyMode, onToggleHistory }) {
       completedAt: null
     });
 
+    setSaving(false);
+    if (saved === false) return;
     setIsPressed(true);
     setTimeout(() => setIsPressed(false), 180);
 
@@ -72,6 +77,7 @@ export default function TaskForm({ onAddTask, historyMode, onToggleHistory }) {
       </select>
       <button
         type="submit"
+        disabled={saving}
         className={isPressed ? 'btn-pressed' : ''}
       >
         Add task
