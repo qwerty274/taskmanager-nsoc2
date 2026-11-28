@@ -16,7 +16,7 @@ import { getTodayDate, createTaskId, addPomodoro } from './utils/taskUtils';
 import { restoreTask } from './utils/undoDelete';
 import { canReorder, moveTask, getMoveMessage } from './utils/reorderUtils';
 import { loadEngineState, recordTaskCompletion, calcStreak, getBalance } from './utils/streakEngine';
-
+import PomodoroTimer from "./components/PomodoroTimer";
 export default function App() {
   const [tasks, setTasks, taskStorage] = useLocalStorage('tasks', []);
   const [engine, setEngine] = useState(() => loadEngineState());
@@ -157,39 +157,49 @@ export default function App() {
         onToggleTimer={() => setShowTimer(prev => !prev)}
       />
 
-      {!taskStorage.writable && <p role="alert">Task editing is read-only because this browser does not support Web Locks. Your saved tasks are still available.</p>}
-      {taskStorage.error && <p role="alert">{taskStorage.error}</p>}
-      <div className="flip-scene">
-        <div className={`flip-inner${showTimer ? ' is-flipped' : ''}`}>
-          <div className="flip-face" aria-hidden={showTimer} inert={showTimer ? '' : undefined}>
-          <fieldset disabled={!taskStorage.writable} style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}>
-          <legend className="visually-hidden">Tasks</legend>
-          <TaskForm
-            onAddTask={handleAddTask}
-            historyMode={historyMode}
-            onToggleHistory={handleToggleHistory}
-          />
+      <TaskForm
+        onAddTask={handleAddTask}
+        historyMode={historyMode}
+        onToggleHistory={handleToggleHistory}
+      />
 
-          <StatsDashboard
-            tasks={tasks}
-            streak={calcStreak(engine.activityDays)}
-            points={getBalance(engine.ledger)}
-            currentFilter={currentFilter}
-            onSelectFilter={setCurrentFilter}
-          />
+      <StatsDashboard
+        tasks={tasks}
+        streak={calcStreak(engine.activityDays)}
+        points={getBalance(engine.ledger)}
+        currentFilter={currentFilter}
+        onSelectFilter={setCurrentFilter}
+      />
+      <PomodoroTimer
+  tasks={tasks.map(task => ({
+    id: task.id,
+    title: task.text
+  }))}
+/>
 
-          <TaskToolbar
-            searchQuery={searchQuery}
-            onSearchChange={setSearchQuery}
-            onClearSearch={handleClearSearch}
-            currentSort={currentSort}
-            onSortChange={setCurrentSort}
-          />
+      <TaskToolbar
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        onClearSearch={handleClearSearch}
+        currentSort={currentSort}
+        onSortChange={setCurrentSort}
+      />
 
-          {historyMode && (
-            <FilterTabs
-              currentFilter={currentFilter}
-              onSelectFilter={setCurrentFilter}
+      <PomodoroTimer
+        taskId={taskId || undefined}
+        onSessionComplete={handleSessionComplete}
+      />
+
+      {taskIdPrompt && (
+        <div id="pomodoro-task-id-prompt" className="pomodoro-task-id-prompt">
+          <label htmlFor="pomodoro-task-id-input" className="pomodoro-task-id-label">
+            Associate timer with task ID:
+            <input
+              id="pomodoro-task-id-input"
+              type="text"
+              value={taskId}
+              onChange={(e) => setTaskId(e.target.value)}
+              aria-label="Task ID to associate with timer"
             />
           )}
 

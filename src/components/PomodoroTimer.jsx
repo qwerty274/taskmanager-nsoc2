@@ -1,207 +1,377 @@
-import React, { useState, useEffect, useRef } from 'react';
-import './PomodoroTimer.css';
-import {
-  DEFAULT_CONFIG, LIMITS, clampSetting, formatTime, getPhaseSeconds, nextPhase, secondsLeft
-} from '../utils/pomodoroUtils';
 
-const SETTINGS = [
-  { key: 'focusMinutes', label: 'Focus (minutes)' },
-  { key: 'shortBreakMinutes', label: 'Short break (minutes)' },
-  { key: 'longBreakMinutes', label: 'Long break (minutes)' },
-  { key: 'sessionsUntilLongBreak', label: 'Focus sessions before long break' }
-];
+import React, { useEffect, useRef, useState } from "react";
+import "./PomodoroTimer.css";
 
-const PHASE_LABEL = { focus: 'Focus', short: 'Short break', long: 'Long break' };
+const DEFAULT_SETTINGS = {
+  focus: 25,
+  shortBreak: 5,
+  longBreak: 15,
+};
 
-/**
- * Pomodoro focus timer.
- * The countdown stores an end timestamp instead of counting ticks, so it stays
- * correct in background tabs. When a phase ends the timer stops and waits for
- * Start, and onSessionComplete(type, minutes, taskId) is called.
- * Starting a focus session first offers fullscreen (OK or Cancel); the timer
- * runs either way.
- */
-export default function PomodoroTimer({ tasks = [], onSessionComplete }) {
-  const [config, setConfig] = useState(DEFAULT_CONFIG);
-  const [phase, setPhase] = useState('focus');
-  const [completedFocus, setCompletedFocus] = useState(0);
-  const [remaining, setRemaining] = useState(DEFAULT_CONFIG.focusMinutes * 60);
+const MODE_LABELS = {
+  focus: "Focus Time",
+  shortBreak: "Short Break",
+  longBreak: "Long Break",
+};
+
+export default function PomodoroTimer({ tasks = [] }) {
+  const [settings, setSettings] = useState(DEFAULT_SETTINGS);
+  const [mode, setMode] = useState("focus");
+  const [timeLeft, setTimeLeft] = useState(25 * 60);
   const [isRunning, setIsRunning] = useState(false);
-  const [announcement, setAnnouncement] = useState('');
-  const [selectedTaskId, setSelectedTaskId] = useState('');
+  const [completedSessions, setCompletedSessions] = useState(0);
+  const [selectedTask, setSelectedTask] = useState("");
 
-  const rootRef = useRef(null);
-  const dialogRef = useRef(null);
-  const endAtRef = useRef(0);
-  const finishingRef = useRef(false);
+  const deadlineRef = useRef(null);
 
-  // The latest callback, so the countdown effect does not restart on every render.
-  const onCompleteRef = useRef(onSessionComplete);
-  onCompleteRef.current = onSessionComplete;
+  // Keep the latest values accessible to the interval.
+  const remainingRef = useRef(timeLeft);
+  const modeRef = useRef(mode);
+  const settingsRef = useRef(settings);
+  const sessionsRef = useRef(completedSessions);
 
-  // A deleted task cannot be credited, so drop the selection.
+  remainingRef.current = timeLeft;
+  modeRef.current = mode;
+  settingsRef.current = settings;
+  sessionsRef.current = completedSessions;
+
+  const updateTime = (seconds) => {
+    remainingRef.current = seconds;
+    setTimeLeft(seconds);
+  };
+
+  // Stable interval: rerenders do not restart the countdown.
   useEffect(() => {
-    if (selectedTaskId && !tasks.some(task => task.id === selectedTaskId)) {
-      setSelectedTaskId('');
-    }
-  }, [tasks, selectedTaskId]);
+    if (!isRunning) return;
 
-  // Active tasks, plus the selected one if it was completed during the session.
-  const taskOptions = tasks.filter(task => !task.completed || task.id === selectedTaskId);
+    deadlineRef.current =
+      Date.now() + remainingRef.current * 1000;
 
-  // Tick: recompute from the end timestamp, so a throttled tab only updates late.
-  useEffect(() => {
-    if (!isRunning) return undefined;
-    const id = setInterval(() => {
-      const left = secondsLeft(endAtRef.current);
-      setRemaining(left);
-      if (left === 0) {
-        if (finishingRef.current) return;
-        finishingRef.current = true;
-        setIsRunning(false);
-        const finished = phase;
-        const minutes = getPhaseSeconds(finished, config) / 60;
-        const next = nextPhase(finished, completedFocus, config);
-        setPhase(next.phase);
-        setCompletedFocus(next.completedFocus);
-        setRemaining(getPhaseSeconds(next.phase, config));
-        setAnnouncement(`${PHASE_LABEL[finished]} finished. ${PHASE_LABEL[next.phase]} is next.`);
-        if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {});
-        // Only a focus session that ran to the end is credited, never a reset.
-        if (onCompleteRef.current) {
-          onCompleteRef.current(finished === 'focus' ? 'focus' : 'break', minutes, selectedTaskId || null);
-        }
+    const interval = setInterval(() => {
+      const remaining = Math.max(
+        0,
+        Math.ceil(
+          (deadlineRef.current - Date.now()) / 1000
+        )
+      );
+
+      if (remaining > 0) {
+        updateTime(remaining);
+        return;
+      }
+
+      clearInterval(interval);
+      updateTime(0);
+      setIsRunning(false);
+
+      if (modeRef.current === "focus") {
+        const nextSessions = sessionsRef.current + 1;
+
+        sessionsRef.current = nextSessions;
+        setCompletedSessions(nextSessions);
+
+        const nextMode =
+          nextSessions % 4 === 0
+            ? "longBreak"
+            : "shortBreak";
+
+        modeRef.current = nextMode;
+        setMode(nextMode);
+
+        updateTime(
+          settingsRef.current[nextMode] * 60
+        );
+      } else {
+        modeRef.current = "focus";
+        setMode("focus");
+
+        updateTime(
+          settingsRef.current.focus * 60
+        );
       }
     }, 250);
-    return () => clearInterval(id);
-  }, [isRunning, phase, completedFocus, config, selectedTaskId]);
+
+    return () => clearInterval(interval);
+  }, [isRunning]);
 
   const startTimer = () => {
-    finishingRef.current = false;
-    endAtRef.current = Date.now() + remaining * 1000;
-    setAnnouncement(`${PHASE_LABEL[phase]} started.`);
+    if (timeLeft <= 0) return;
     setIsRunning(true);
   };
 
   const pauseTimer = () => {
-    setRemaining(secondsLeft(endAtRef.current));
-    setIsRunning(false);
-    setAnnouncement('Timer paused.');
-  };
+    if (deadlineRef.current !== null) {
+      const remaining = Math.max(
+        0,
+        Math.ceil(
+          (deadlineRef.current - Date.now()) / 1000
+        )
+      );
 
-  const handleStartClick = () => {
-    const canAsk =
-      document.fullscreenEnabled && !document.fullscreenElement && phase === 'focus';
-    const dialog = dialogRef.current;
-    if (canAsk && dialog && typeof dialog.showModal === 'function') {
-      dialog.showModal();
-      return;
+      updateTime(remaining);
     }
-    startTimer();
-  };
 
-  // requestFullscreen needs a user gesture, so it is called from the OK click.
-  const handleFullscreenChoice = (accepted) => {
-    dialogRef.current?.close();
-    if (accepted) rootRef.current?.requestFullscreen?.().catch(() => {});
-    startTimer(); // runs either way
+    setIsRunning(false);
   };
 
   const resetTimer = () => {
     setIsRunning(false);
-    setPhase('focus');
-    setCompletedFocus(0);
-    setRemaining(getPhaseSeconds('focus', config));
-    setAnnouncement('Timer reset.');
-    if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {});
+    deadlineRef.current = null;
+
+    updateTime(settings[mode] * 60);
   };
 
-  // Settings are only editable while stopped. The timer goes back to a fresh
-  // focus session built from the NEW values (not the old config).
-  const handleSettingChange = (key, rawValue) => {
-    if (rawValue === '') return; // let the person clear the box while typing
-    const next = { ...config, [key]: clampSetting(key, rawValue) };
-    setConfig(next);
-    setPhase('focus');
-    setCompletedFocus(0);
-    setRemaining(getPhaseSeconds('focus', next));
+  const changeMode = (newMode) => {
+    setIsRunning(false);
+    deadlineRef.current = null;
+
+    modeRef.current = newMode;
+    setMode(newMode);
+
+    updateTime(settings[newMode] * 60);
   };
+
+  const updateSetting = (key, value) => {
+    if (value === "") {
+      setSettings((prev) => ({
+        ...prev,
+        [key]: "",
+      }));
+      return;
+    }
+
+    const duration = Math.max(
+      1,
+      Math.min(120, Number(value))
+    );
+
+    setSettings((prev) => ({
+      ...prev,
+      [key]: duration,
+    }));
+  };
+
+  const applySettings = () => {
+    const normalized = {};
+
+    Object.keys(DEFAULT_SETTINGS).forEach((key) => {
+      normalized[key] = Math.max(
+        1,
+        Math.min(
+          120,
+          Number(settings[key]) || DEFAULT_SETTINGS[key]
+        )
+      );
+    });
+
+    settingsRef.current = normalized;
+    setSettings(normalized);
+
+    if (!isRunning) {
+      updateTime(normalized[mode] * 60);
+    }
+  };
+
+  const formatTime = (seconds) => {
+    const minutes = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+
+    return `${String(minutes).padStart(2, "0")}:${String(
+      secs
+    ).padStart(2, "0")}`;
+  };
+
+  const selectedTaskTitle =
+    tasks.find(
+      (task) => String(task.id) === selectedTask
+    )?.title || "No task selected";
 
   return (
-    <div
-      id="pomodoro-timer"
-      ref={rootRef}
-      className="pomodoro-timer"
-      role="group"
-      aria-label="Pomodoro focus timer"
-    >
-      <p className="visually-hidden" role="status">{announcement}</p>
-
-      <label className="pomodoro-task-select">
-        Focus on task
-        <select value={selectedTaskId} onChange={(e) => setSelectedTaskId(e.target.value)}>
-          <option value="">No task</option>
-          {taskOptions.map(task => (
-            <option key={task.id} value={task.id}>{task.text}</option>
-          ))}
-        </select>
-      </label>
-
-      <p className="pomodoro-phase">{PHASE_LABEL[phase]}</p>
-      <div className="pomodoro-display" aria-label="Remaining time">
-        {formatTime(remaining)}
+    <section className="pomodoro-container">
+      <div className="pomodoro-header">
+        <div>
+          <span className="pomodoro-eyebrow">
+            PRODUCTIVITY
+          </span>
+          <h2>Pomodoro Focus Timer</h2>
+          <p>Stay focused. Take meaningful breaks.</p>
+        </div>
+        <span className="pomodoro-icon" aria-hidden="true">
+          🍅
+        </span>
       </div>
       <p className="pomodoro-session-info">
         Focus sessions done in this cycle: {completedFocus} of {config.sessionsUntilLongBreak}
       </p>
 
-      <div className="pomodoro-controls">
-        <button
-          type="button"
-          className="pomodoro-btn pomodoro-btn--play"
-          onClick={isRunning ? pauseTimer : handleStartClick}
-        >
-          {isRunning ? 'Pause' : 'Start'}
-        </button>
-        <button type="button" className="pomodoro-btn pomodoro-btn--reset" onClick={resetTimer}>
-          Reset
-        </button>
+      <div className="pomodoro-modes">
+        {Object.keys(MODE_LABELS).map((item) => (
+          <button
+            key={item}
+            type="button"
+            className={
+              mode === item ? "mode-btn active" : "mode-btn"
+            }
+            aria-pressed={mode === item}
+            onClick={() => changeMode(item)}
+          >
+            {MODE_LABELS[item]}
+          </button>
+        ))}
       </div>
 
-      <fieldset className="pomodoro-config" disabled={isRunning}>
-        <legend>Timer settings</legend>
-        {SETTINGS.map(({ key, label }) => (
-          <label key={key}>
-            {label}
-            <input
-              type="number"
-              inputMode="numeric"
-              min={LIMITS[key][0]}
-              max={LIMITS[key][1]}
-              value={config[key]}
-              onChange={(e) => handleSettingChange(key, e.target.value)}
-            />
-          </label>
-        ))}
-      </fieldset>
+      <div className="pomodoro-clock">
+        <div
+          className="pomodoro-time"
+          role="timer"
+          aria-label={`${MODE_LABELS[mode]}: ${formatTime(timeLeft)} remaining`}
+        >
+          {formatTime(timeLeft)}
+        </div>
 
-      <dialog ref={dialogRef} className="pomodoro-dialog" aria-labelledby="pomodoro-fs-title">
-        <h2 id="pomodoro-fs-title">Entering full screen</h2>
-        <p>The timer will fill your screen. Press Esc any time to leave full screen.</p>
-        <div className="pomodoro-dialog-actions">
-          <button type="button" className="pomodoro-btn" onClick={() => handleFullscreenChoice(false)}>
-            Cancel
-          </button>
+        <p className="pomodoro-status" aria-live="polite">
+          {isRunning
+            ? "Timer is running"
+            : timeLeft === 0
+              ? "Session completed"
+              : "Ready to focus"}
+        </p>
+
+        <div className="pomodoro-controls">
+          {!isRunning ? (
+            <button
+              type="button"
+              className="start-btn"
+              onClick={startTimer}
+              disabled={timeLeft === 0}
+            >
+              ▶ Start
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="pause-btn"
+              onClick={pauseTimer}
+            >
+              ⏸ Pause
+            </button>
+          )}
+
           <button
             type="button"
-            className="pomodoro-btn pomodoro-btn--play"
-            autoFocus
-            onClick={() => handleFullscreenChoice(true)}
+            className="reset-btn"
+            onClick={resetTimer}
           >
-            OK
+            ↻ Reset
           </button>
         </div>
-      </dialog>
-    </div>
+      </div>
+
+      <div className="pomodoro-progress">
+        <span>Completed focus sessions</span>
+        <strong>{completedSessions}</strong>
+      </div>
+
+      <div className="pomodoro-task">
+        <label htmlFor="pomodoro-task">
+          Associate with a task
+        </label>
+
+        <select
+          id="pomodoro-task"
+          value={selectedTask}
+          onChange={(e) => setSelectedTask(e.target.value)}
+        >
+          <option value="">No task selected</option>
+
+          {tasks.map((task) => (
+            <option
+              key={task.id}
+              value={String(task.id)}
+            >
+              {task.title}
+            </option>
+          ))}
+        </select>
+
+        <p>
+          Current task: <strong>{selectedTaskTitle}</strong>
+        </p>
+      </div>
+
+      <div className="pomodoro-settings">
+        <h3>Timer Settings</h3>
+
+        <div className="settings-grid">
+          <div>
+            <label htmlFor="focus-duration">
+              Focus (minutes)
+            </label>
+            <input
+              id="focus-duration"
+              type="number"
+              min="1"
+              max="120"
+              value={settings.focus}
+              onChange={(e) =>
+                updateSetting("focus", e.target.value)
+              }
+              onBlur={applySettings}
+            />
+          </div>
+
+          <div>
+            <label htmlFor="short-duration">
+              Short Break (minutes)
+            </label>
+            <input
+              id="short-duration"
+              type="number"
+              min="1"
+              max="120"
+              value={settings.shortBreak}
+              onChange={(e) =>
+                updateSetting("shortBreak", e.target.value)
+              }
+              onBlur={applySettings}
+            />
+          </div>
+
+          <div>
+            <label htmlFor="long-duration">
+              Long Break (minutes)
+            </label>
+            <input
+              id="long-duration"
+              type="number"
+              min="1"
+              max="120"
+              value={settings.longBreak}
+              onChange={(e) =>
+                updateSetting("longBreak", e.target.value)
+              }
+              onBlur={applySettings}
+            />
+          </div>
+        </div>
+
+        <button
+          type="button"
+          className="save-settings-btn"
+          onClick={applySettings}
+          disabled={isRunning}
+        >
+          Apply Settings
+        </button>
+
+        <p className="settings-note">
+          Long break starts after every 4 completed focus sessions.
+        </p>
+      </div>
+
+      <p className="pomodoro-footer">
+        Focus sessions never automatically complete your tasks.
+      </p>
+    </section>
   );
 }
